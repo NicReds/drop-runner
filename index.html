@@ -1136,6 +1136,12 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
       .catch(e => { ocrReady = null; start.then(w => w.terminate()).catch(() => {}); console.error(e); throw e; });
     return ocrReady;
   }
+  function turn(c, dir){
+    const r = document.createElement("canvas"); r.width = c.height; r.height = c.width;
+    const x = r.getContext("2d");
+    if (dir > 0){ x.translate(r.width, 0); x.rotate(Math.PI / 2); } else { x.translate(0, r.height); x.rotate(-Math.PI / 2); }
+    x.drawImage(c, 0, 0); return r;
+  }
   function prepImage(file){
     return new Promise((res, rej) => {
       const img = new Image(), url = URL.createObjectURL(file);
@@ -1218,7 +1224,23 @@ ${t.slice(0, 6000)}`;
     try {
       const [w, canvas] = await Promise.all([getOcr(), prepImage(file)]);
       rt.textContent = "Reading the delivery note…";
-      const { data } = await Promise.race([w.recognize(canvas, {}, { text: true, blocks: false, hocr: false, tsv: false }), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 60000))]);
+      const ocrOnce = c => Promise.race([w.recognize(c, {}, { text: true, blocks: false, hocr: false, tsv: false }).then(r => r.data), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 60000))]);
+      const score = d => (d.confidence || 0) + (parseNote(d.text || "").postcode ? 50 : 0);
+      let data;
+      if (canvas.width > canvas.height * 1.1){
+        // Delivery notes are portrait: a landscape photo means the camera saved it sideways, so turn it upright first.
+        rt.textContent = "Photo came out sideways, straightening it…";
+        const a = await ocrOnce(turn(canvas, 1)), sa = score(a);
+        data = a;
+        if (sa < 120){
+          rt.textContent = "Trying the other way round…";
+          const b = await ocrOnce(turn(canvas, -1)), sb = score(b);
+          if (sb > sa) data = b;
+          if (Math.max(sa, sb) < 60){ const c = await ocrOnce(canvas); if (score(c) > score(data)) data = c; }
+        }
+      } else {
+        data = await ocrOnce(canvas);
+      }
       if ($("sheet").hidden) return;
       const parsed = parseNote(data.text || "");
       let r = parsed;
