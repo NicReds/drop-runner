@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fusion Drop Runner</title>
+<meta name="theme-color" content="#191d23">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drop Runner">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-column cab tool — "next drop" sign up top, numbered run list below, a fixed scan bar at the thumb. */
+:root{
+  /* LabelMaker Studio look: charcoal panels, blue section labels, outlined controls, blue neon glow. Single dark theme by design. */
+  --bg:#191d23; --surface:#20252c; --surface-2:#262c34; --fg:#e4e8ee; --muted:#8a929e; --line:#363d47;
+  --neon:#4aa3ff; --neon-ink:#06111d; --neon-soft:rgba(74,163,255,.35); --neon-faint:rgba(74,163,255,.12);
+  --sign:#4aa3ff; --sign-ink:#06111d; --route:#4aa3ff; --route-ink:#06111d;
+  --ok:#4ade80; --ok-bg:rgba(74,222,128,.10); --warn:#ffb340; --warn-bg:rgba(255,179,64,.10); --danger:#ff6b6b; --danger-bg:rgba(255,107,107,.10);
+  --shadow:none;
+  --display:"Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Roboto Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --r:14px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;-webkit-tap-highlight-color:transparent;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;margin:0}
+.wrap{max-width:620px;margin:0 auto;padding-inline:16px;padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:132px;display:flex;flex-direction:column;gap:18px}
+h1,h2{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--route);outline-offset:2px}
+.label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top h1{font-size:34px;line-height:1}
+.top .meta{color:var(--muted);font-size:14px}
+.progress{display:flex;align-items:center;gap:10px;min-width:0}
+.bar{height:8px;flex:1;min-width:90px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sign);transition:width .3s}
+
+/* route-number badge (primary route style) */
+.badge{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:46px;padding:0 8px;
+  background:var(--sign);color:var(--route);border:2px solid var(--sign-ink);outline:2px solid var(--sign);
+  border-radius:8px;font-family:var(--display);font-weight:700;font-size:26px;line-height:1}
+.done .badge{background:var(--surface-2);color:var(--muted);outline-color:var(--line);border-color:var(--surface)}
+
+/* next drop sign */
+.next{background:var(--sign);color:var(--sign-ink);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.next .row{display:flex;gap:14px;align-items:flex-start}
+.next .badge{border-color:var(--sign);outline-color:var(--route);background:var(--sign);height:58px;min-width:58px;font-size:34px}
+.next .eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.85;font-weight:600}
+.next h2{font-size:28px;line-height:1.05;margin-top:2px}
+.next .addr{opacity:.95;margin-top:4px}
+.next .pc{display:inline-block;margin-top:6px;background:var(--route);color:var(--route-ink);font-family:var(--display);font-weight:700;font-size:18px;padding:1px 8px;border-radius:4px;letter-spacing:.04em}
+.next .acts{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;text-decoration:none;color:var(--fg)}
+.btn.primary{background:var(--route);color:var(--route-ink);border-color:var(--route);font-family:var(--display);font-size:20px;letter-spacing:.02em}
+.btn.ghost-on-sign{background:transparent;color:var(--sign-ink);border-color:rgba(255,255,255,.55)}
+.btn.small{min-height:40px;padding:0 12px;font-size:14px}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn[disabled]{opacity:.5;cursor:default}
+.grow{flex:1}
+
+/* list */
+.listhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.list{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px}
+.stop .row{display:flex;gap:12px;align-items:flex-start}
+.stop .info{min-width:0;flex:1}
+.stop .name{font-weight:600;font-size:17px;overflow-wrap:anywhere}
+.stop .addr{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.stop .pcs{font-weight:600;color:var(--fg);letter-spacing:.03em}
+.stop .note{font-size:13px;color:var(--warn);background:var(--warn-bg);padding:3px 8px;border-radius:6px;margin-top:6px;display:inline-block}
+.stop .acts{display:flex;gap:8px;flex-wrap:wrap}
+.stop.done{background:var(--surface-2)}
+.stop.done .name{text-decoration:line-through;color:var(--muted)}
+.stop.is-next{border-color:var(--sign);box-shadow:0 0 0 1px var(--sign)}
+.chip{font-size:12px;font-weight:600;padding:2px 8px;border-radius:20px}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.ex{background:var(--warn-bg);color:var(--warn)}
+.confirm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;background:var(--danger-bg);color:var(--danger);padding:8px 10px;border-radius:8px}
+
+/* empty */
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px}
+.steps{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:12px;align-items:center}
+.steps .badge{min-width:34px;height:34px;font-size:20px}
+
+/* banner */
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.banner .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* scan bar */
+.dock{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);z-index:10}
+.dock .in{max-width:620px;margin:0 auto;display:flex;gap:10px}
+.scan{flex:1;min-height:58px;border-radius:12px;border:0;background:var(--sign);color:var(--sign-ink);font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.02em;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.dock .alt{min-height:58px;padding:0 14px}
+.status{font-size:13px;color:var(--muted);text-align:center;margin-top:6px;min-height:1em}
+
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(10,16,13,.55);display:flex;align-items:flex-end;justify-content:center}
+.panel{background:var(--surface);color:var(--fg);width:100%;max-width:620px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.panel h2{font-size:26px}
+.thumb{width:100%;max-height:180px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input,.field textarea{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;width:100%}
+.field textarea{min-height:64px;resize:vertical}
+.pair{display:grid;grid-template-columns:110px 1fr;gap:10px}
+.reading{display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface-2);border-radius:10px}
+.spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--sign);animation:sp 1s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hint{font-size:13px;color:var(--muted)}
+.err{font-size:14px;color:var(--danger);background:var(--danger-bg);padding:8px 10px;border-radius:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:8px 12px;font-size:14px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--sign);color:var(--sign-ink)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+
+/* run totals */
+.totals{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat b{font-family:var(--display);font-size:28px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.tline{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.tline b{color:var(--fg);font-weight:600}
+.tline:empty{display:none}
+.multi{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:var(--route);color:var(--route-ink);font-weight:700;padding:5px 10px;border-radius:8px;font-size:14px}
+.multi-list{font-size:13px;margin-top:4px;opacity:.95}
+.chip.many{background:var(--warn-bg);color:var(--warn)}
+.extras{font-size:13px;color:var(--muted);margin-top:4px}
+.merge{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.merge .acts,.xbox .acts{display:flex;gap:8px;flex-wrap:wrap}
+.xbox{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.xrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.leg{font-size:12px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.setrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.setrow .field input{padding:10px}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px}
+.chk input{width:20px;height:20px;accent-color:var(--sign)}
+.linkbtn{background:none;border:0;padding:0;color:var(--fg);text-decoration:underline;font-size:13px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- LabelMaker neon skin ---- */
+body{letter-spacing:.005em}
+:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+h1{font-weight:700;text-shadow:0 0 18px rgba(74,163,255,.28)}
+.top h1{font-size:32px}
+.label{color:var(--neon);letter-spacing:.14em;font-weight:600}
+.field .label{color:var(--muted);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500}
+.num,.leg,.pcs,#fDrop,#fPc,#fPhone,#sStop,#sFactor,#sOdoA,#sOdoB,#sDepot{font-family:var(--mono)}
+.bar{background:var(--surface-2);height:6px}
+.bar i{background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.badge{background:transparent;color:var(--neon);border:1.5px solid var(--neon);outline:none;border-radius:10px;
+  font-family:var(--mono);font-weight:600;font-size:22px;box-shadow:0 0 10px var(--neon-soft),inset 0 0 8px var(--neon-faint);text-shadow:0 0 8px rgba(74,163,255,.75)}
+.done .badge{color:var(--muted);border-color:var(--line);box-shadow:none;text-shadow:none;background:transparent}
+.next{background:var(--surface);color:var(--fg);border:1px solid var(--neon);
+  box-shadow:0 0 0 1px rgba(74,163,255,.25),0 0 24px rgba(74,163,255,.28),inset 0 0 26px rgba(74,163,255,.06);animation:breathe 3.2s ease-in-out infinite}
+@keyframes breathe{50%{box-shadow:0 0 0 1px rgba(74,163,255,.4),0 0 34px rgba(74,163,255,.42),inset 0 0 30px rgba(74,163,255,.09)}}
+.next .badge{background:transparent;color:var(--neon);height:58px;min-width:58px;font-size:30px;border-width:2px}
+.next .eyebrow{color:var(--neon);opacity:1;letter-spacing:.16em;text-shadow:0 0 8px rgba(74,163,255,.5)}
+.next h2{font-family:var(--display);font-size:26px;line-height:1.15}
+.next .addr{color:var(--muted);opacity:1}
+.next .pc{background:transparent;color:var(--neon);border:1px solid rgba(74,163,255,.6);font-family:var(--mono);font-weight:600;font-size:16px;padding:2px 8px;border-radius:6px;box-shadow:0 0 8px rgba(74,163,255,.3);text-shadow:0 0 6px rgba(74,163,255,.6)}
+.btn{background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:12px;font-weight:500}
+.btn:active{background:var(--surface-2)}
+.btn.primary{background:var(--neon);color:var(--neon-ink);border-color:var(--neon);font-family:var(--body);font-weight:700;font-size:18px;letter-spacing:.01em;box-shadow:0 0 16px rgba(74,163,255,.55),0 0 2px var(--neon)}
+.btn.ghost-on-sign{color:var(--fg);border-color:var(--line)}
+.btn.danger{color:var(--danger);border-color:rgba(255,107,107,.35)}
+.stop{background:var(--surface);border-color:var(--line)}
+.stop.is-next{border-color:var(--neon);box-shadow:0 0 0 1px rgba(74,163,255,.35),0 0 14px rgba(74,163,255,.22)}
+.stop.done{background:var(--bg);opacity:.8}
+.stop .note{background:var(--warn-bg);color:var(--warn);border:1px solid rgba(255,179,64,.3)}
+.chip{border:1px solid currentColor}
+.chip.ok{background:var(--ok-bg);color:var(--ok);box-shadow:0 0 8px rgba(74,222,128,.25)}
+.chip.ex,.chip.many{background:var(--warn-bg);color:var(--warn)}
+.chip.many{box-shadow:0 0 8px rgba(255,179,64,.35)}
+.multi{background:transparent;color:var(--warn);border:1px solid var(--warn);box-shadow:0 0 12px rgba(255,179,64,.4),inset 0 0 8px rgba(255,179,64,.1);text-shadow:0 0 8px rgba(255,179,64,.55)}
+.confirm,.err{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(255,107,107,.3)}
+.banner,.merge{background:var(--warn-bg);color:var(--warn);border:1px solid rgba(255,179,64,.35)}
+.empty{background:var(--surface);border:1.5px dashed #4a525e}
+.totals{background:var(--surface);border-color:var(--line)}
+.stat b{font-family:var(--mono);font-weight:600;font-size:26px;color:var(--neon);text-shadow:0 0 12px rgba(74,163,255,.6)}
+.dock{background:rgba(25,29,35,.96);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+.scan{background:var(--neon);color:var(--neon-ink);font-family:var(--body);font-weight:700;font-size:20px;letter-spacing:.01em;box-shadow:0 0 20px rgba(74,163,255,.6),0 0 2px var(--neon)}
+.sheet{background:rgba(5,8,12,.72)}
+.panel{background:var(--surface);border-top:1px solid var(--neon);box-shadow:0 -6px 30px rgba(74,163,255,.2)}
+.panel h2{font-family:var(--display);font-size:24px}
+.field input,.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:12px;color:var(--fg)}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),0 0 12px rgba(74,163,255,.35)}
+.reading,.xbox{background:var(--bg);border:1px solid var(--line)}
+.spin{border-color:var(--line);border-top-color:var(--neon);box-shadow:0 0 10px rgba(74,163,255,.3)}
+.seg{border-color:var(--line)}
+.seg button{background:transparent;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--neon);color:var(--neon-ink);box-shadow:0 0 10px rgba(74,163,255,.5)}
+.linkbtn{color:var(--neon)}
+.chk input{accent-color:var(--neon)}
+.steps .badge{font-size:16px}
+.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;background:none;border:0;padding:0;color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.who .drv{font-weight:500}
+.who .drv::before{content:"Driver ";color:var(--muted);font-weight:400}
+.plate{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.08em;background:#ffd84d;color:#111;border-radius:4px;padding:2px 8px;border:1px solid #c9a400;box-shadow:0 0 10px rgba(255,216,77,.35)}
+.who .add{color:var(--warn);border:1px dashed rgba(255,179,64,.6);border-radius:8px;padding:4px 10px;font-size:14px;box-shadow:0 0 10px rgba(255,179,64,.2)}
+.who .edit{color:var(--neon);font-size:13px;text-decoration:underline}
+.skipbox{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.reasons{display:flex;flex-wrap:wrap;gap:6px}
+.reason{min-height:38px;padding:0 12px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--fg);font-size:14px}
+.reason[aria-pressed="true"]{border-color:var(--warn);color:var(--warn);box-shadow:0 0 10px rgba(255,179,64,.35)}
+.btn.skip{color:var(--warn);border-color:rgba(255,179,64,.45)}
+.chip.skipped{background:var(--warn-bg);color:var(--warn);box-shadow:0 0 8px rgba(255,179,64,.3)}
+.chip.fail{background:var(--danger-bg);color:var(--danger);box-shadow:0 0 8px rgba(255,107,107,.3)}
+.stop.failed .name{text-decoration:line-through;color:var(--muted)}
+.retry{color:var(--warn);font-size:13px;margin-top:4px}
+.mstep{display:flex;gap:12px;align-items:flex-start}
+.mstep .badge{min-width:32px;height:32px;font-size:15px}
+.mstep > div{min-width:0;flex:1;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.copyrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.copyrow b{overflow-wrap:anywhere;font-weight:600}
+#mSummary{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:12px;color:var(--fg)}
+.mailshare{display:flex;flex-direction:column;gap:6px}
+details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
+@media (prefers-reduced-motion:reduce){.next{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
+      <h1>Today's run</h1>
+      <button type="button" class="who" id="who" aria-label="Driver and van"></button>
+    </div>
+    <div class="progress" aria-live="polite">
+      <span class="meta num" id="countLabel">0 of 0 delivered</span>
+      <div class="bar" aria-hidden="true"><i id="barFill" style="width:0%"></i></div>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+  <section id="totals" class="totals" aria-label="Run totals" hidden>
+    <div class="stats">
+      <div class="stat"><b id="tMiles">–</b><span id="tMilesLbl">miles (est.)</span></div>
+      <div class="stat"><b id="tDrive">–</b><span id="tDriveLbl">driving (est.)</span></div>
+      <div class="stat"><b id="tDay">–</b><span id="tDayLbl">with stops</span></div>
+    </div>
+    <div class="tline" id="tLeft"></div>
+    <div class="tline" id="tActual"></div>
+    <div class="tline" id="tWarn"></div>
+    <div class="tline"><span id="tFrom">From base</span><span style="display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="linkbtn" data-act="finish-ask" id="finishLink">Finish day</button><button type="button" class="linkbtn" data-act="mail-open">Email report</button><button type="button" class="linkbtn" data-act="report">PDF</button><button type="button" class="linkbtn" data-act="csv">CSV</button><button type="button" class="linkbtn" id="setBtn">Settings</button></span></div>
+    <div id="setBox" hidden style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="setrow">
+        <div class="field"><label class="label" for="sDepot">Base postcode</label><input id="sDepot" autocomplete="off" style="text-transform:uppercase" placeholder="BB1 5AA"></div>
+        <div class="field"><label class="label" for="sStop">Mins per drop</label><input id="sStop" inputmode="numeric" class="num"></div>
+        <div class="field"><label class="label" for="sFactor">Road factor</label><input id="sFactor" inputmode="decimal" class="num"></div>
+      </div>
+      <div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="field"><label class="label" for="sDriver">Driver</label><input id="sDriver" autocomplete="off" placeholder="Name for the report"></div>
+        <div class="field"><label class="label" for="sVan">Van reg</label><input id="sVan" autocomplete="off" style="text-transform:uppercase" placeholder="AB12 CDE"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="sReturn"> Return to base at the end</label>
+      <div class="setrow">
+        <div class="field"><label class="label" for="sOdoA">Van miles start</label><input id="sOdoA" inputmode="numeric" class="num" placeholder="Odometer"></div>
+        <div class="field"><label class="label" for="sOdoB">Van miles end</label><input id="sOdoB" inputmode="numeric" class="num" placeholder="Odometer"></div>
+        <div class="field" style="justify-content:flex-end"><button type="button" class="btn small" id="setDone">Done</button></div>
+      </div>
+      <div class="hint" id="setHint">Miles and times are estimates from postcode locations, adjusted for road distance. Enter the van's odometer for the real mileage.</div>
+    </div>
+  </section>
+  <section id="nextBox" class="next" hidden aria-label="Next drop"></section>
+
+  <section aria-label="All drops" style="display:flex;flex-direction:column;gap:10px">
+    <div class="listhead">
+      <span class="label">Drops in delivery order</span>
+      <a id="routeBtn" class="btn small" target="_blank" rel="noopener" hidden>Full route in Maps</a>
+    </div>
+    <ol class="list" id="list"></ol>
+    <div id="empty" class="empty">
+      <h2 style="font-size:24px">Build the run from your delivery notes</h2>
+      <ol class="steps">
+        <li><span class="badge">1</span><span>Number your notes as usual, 1 for the first drop.</span></li>
+        <li><span class="badge">2</span><span>Tap <b>Scan note</b> and photograph each one. The name, address and your drop number are read off the note.</span></li>
+        <li><span class="badge">3</span><span>Check it, add it, and tap <b>Directions</b> when you set off.</span></li>
+      </ol>
+      <div><button class="btn small" id="exampleBtn" type="button">Show example drops</button></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span id="saveState">Saved on this phone</span>
+    <span style="display:flex;align-items:center;gap:8px">Maps app
+      <span class="seg" role="group" aria-label="Maps app">
+        <button type="button" id="mapG" aria-pressed="true">Google</button>
+        <button type="button" id="mapA" aria-pressed="false">Apple</button>
+      </span>
+    </span>
+  </div>
+  <div id="clearZone"><button class="btn small danger" id="clearBtn" type="button" hidden>Clear the run</button></div>
+</div>
+
+<div class="dock">
+  <div class="in">
+    <button class="scan" id="scanBtn" type="button">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
+      Scan note
+    </button>
+    <button class="btn alt" id="galleryBtn" type="button" title="Pick photos already taken">Photos</button>
+    <button class="btn alt" id="typeBtn" type="button" title="Type an address">Type</button>
+  </div>
+  <div class="status" id="status"></div>
+  <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+  <input type="file" id="galIn" accept="image/*" multiple hidden>
+</div>
+
+<div class="sheet" id="mailSheet" hidden>
+  <div class="panel" role="dialog" aria-labelledby="mailTitle">
+    <h2 id="mailTitle">Email the report</h2>
+    <div class="field"><label class="label" for="mTo">Send to</label><input id="mTo" type="email" inputmode="email" autocomplete="off" placeholder="office@its-print.co.uk"></div>
+    <div id="mSummary"></div>
+    <div id="mShare" class="mailshare" hidden>
+      <button type="button" class="btn primary" data-act="mail-share">Open email app with PDF and CSV attached</button>
+      <div class="hint">Choose Gmail or Outlook. The address above is copied, so paste it into To.</div>
+    </div>
+    <details class="more" id="mMore"><summary>Or save the files and attach them yourself</summary></details>
+    <div id="mSteps" style="display:flex;flex-direction:column;gap:12px">
+      <div class="mstep"><span class="badge">1</span><div><button type="button" class="btn" data-act="report">Save PDF report</button></div></div>
+      <div class="mstep"><span class="badge">2</span><div><button type="button" class="btn" data-act="csv">Save CSV spreadsheet</button></div></div>
+      <div class="mstep"><span class="badge">3</span><div>
+        <span>Open your email app, attach both files from Downloads, and send.</span>
+        <div class="copyrow"><span class="hint">To</span><b id="mToTxt">–</b><button type="button" class="btn small" data-act="copy-to">Copy</button></div>
+        <div class="copyrow"><span class="hint">Subject</span><b id="mSubj"></b><button type="button" class="btn small" data-act="copy-subj">Copy</button></div>
+        <div class="copyrow"><button type="button" class="btn small" data-act="copy-body">Copy message</button><a id="mMailto" class="btn small" target="_blank" rel="noopener">Open email app</a></div>
+      </div></div>
+    </div>
+    <div class="hint" id="mNote"></div>
+    <button type="button" class="btn" data-act="mail-close">Close</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <form class="panel" id="form" novalidate>
+    <h2 id="sheetTitle">Check the drop</h2>
+    <img id="thumb" class="thumb" alt="Photo of the delivery note" hidden>
+    <div id="reading" class="reading" hidden><span class="spin"></span><span id="readingText">Reading the delivery note…</span></div>
+    <div id="formErr" class="err" hidden></div>
+    <div class="pair">
+      <div class="field"><label class="label" for="fDrop">Drop no.</label><input id="fDrop" inputmode="numeric" class="num" autocomplete="off"></div>
+      <div class="field"><label class="label" for="fName">Customer</label><input id="fName" autocomplete="off"></div>
+    </div>
+    <div class="field"><label class="label" for="fAddr">Address</label><textarea id="fAddr" autocomplete="off"></textarea></div>
+    <div class="pair">
+      <div class="field"><label class="label" for="fPc">Postcode</label><input id="fPc" autocomplete="off" style="text-transform:uppercase"></div>
+      <div class="field"><label class="label" for="fPhone">Phone</label><input id="fPhone" inputmode="tel" autocomplete="off"></div>
+    </div>
+    <div class="field"><label class="label" for="fNote">Delivery notes</label><input id="fNote" autocomplete="off" placeholder="e.g. Goods in at rear, ring bell"></div>
+    <div id="ocrLines" hidden style="display:flex;flex-direction:column;gap:8px">
+      <div id="pcChips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>
+      <details><summary class="hint" style="cursor:pointer">Show everything read from the note</summary><pre id="rawText" style="white-space:pre-wrap;font-size:12px;color:var(--muted);background:var(--surface-2);padding:10px;border-radius:8px;max-height:200px;overflow:auto;margin:6px 0 0"></pre></details>
+    </div>
+    <div id="pcWarn" class="hint" hidden></div>
+    <div id="dupWarn" class="hint" hidden></div>
+    <div id="mergeBox" class="merge" hidden></div>
+    <div id="xBox" class="xbox" hidden></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary grow" id="saveBtn" type="submit">Add drop</button>
+      <button class="btn grow" id="saveNextBtn" type="button">Add &amp; scan next</button>
+    </div>
+    <button class="btn" id="cancelBtn" type="button">Discard</button>
+    <div class="hint" id="queueHint" hidden></div>
+  </form>
+</div>
+
+<script src="config.js"></script>
+<script src="tesseract.min.js"></script>
+<script src="jspdf.umd.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const todayKey = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+  const fmtDay = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}); };
+  const PC_RE = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i;
+  const normPc = s => { const m = String(s||"").toUpperCase().match(PC_RE); return m ? m[1]+" "+m[2] : String(s||"").toUpperCase().trim(); };
+  const LS = "dropRunner.v1";
+
+  let state = { date: todayKey(), stops: [] };
+  let mapApp = "google";
+  let db = null, runRef = null, sample = null, canImages = false;
+  let editingId = null, pendingConfirm = null;
+  let queue = [], working = false, scanCtl = null;
+
+  // ---------- storage ----------
+  function lsRead(){ try { const v = JSON.parse(localStorage.getItem(LS)||"null"); return v && Array.isArray(v.stops) ? v : null; } catch { return null; } }
+  function lsWrite(){ try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} }
+  try { const m = localStorage.getItem(LS+".maps"); if (m === "apple" || m === "google") mapApp = m; } catch {}
+
+  let saveChain = Promise.resolve();
+  function persist(){
+    lsWrite();
+    if (!runRef) return;
+    const body = JSON.parse(JSON.stringify(state));
+    $("saveState").textContent = "Saving…";
+    saveChain = saveChain.then(() => runRef.set(body)).then(
+      () => { $("saveState").textContent = "Saved to your account"; },
+      () => { $("saveState").textContent = "Saved on this phone only"; });
+  }
+
+  // ---------- helpers ----------
+  const sorted = () => [...state.stops].sort((a,b) => (a.drop - b.drop) || (a.added - b.added));
+  const routeOrder = () => { const a = sorted(); return a.filter(s => s.done || !s.skipped).concat(a.filter(s => !s.done && s.skipped).sort((x, y) => (x.skipAt||0) - (y.skipAt||0))); };
+  const nextStop = () => routeOrder().find(s => !s.done);
+  const delivered = s => s.done && !s.failed;
+  const destOf = s => [s.name, s.address, s.postcode].filter(Boolean).join(", ") + ", UK";
+  function dirUrl(s){
+    const d = encodeURIComponent(destOf(s));
+    return mapApp === "apple" ? "https://maps.apple.com/?daddr="+d+"&dirflg=d"
+      : "https://www.google.com/maps/dir/?api=1&destination="+d+"&travelmode=driving";
+  }
+  function routeUrl(){
+    const open = routeOrder().filter(s => !s.done).slice(0,10);
+    if (!open.length) return null;
+    if (mapApp === "apple") return dirUrl(open[0]);
+    const dest = open[open.length-1];
+    const way = open.slice(0,-1).map(destOf).join("|");
+    return "https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(destOf(dest))
+      + (way ? "&waypoints="+encodeURIComponent(way) : "") + "&travelmode=driving";
+  }
+  const freeDrop = () => { const used = new Set(state.stops.map(s=>s.drop)); let n = 1; while (used.has(n)) n++; return n; };
+  const maxDrop = () => state.stops.reduce((m,s)=>Math.max(m,s.drop),0);
+  const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const status = t => { $("status").textContent = t || ""; };
+
+
+  // ---------- distances & times ----------
+  let PCDB = null;
+  // Postcode clean-up: fixes common misreads (O/0, S/5, B/8, I/1, Z/2, G/6) and checks the result against the postcode table.
+  const AMB_D = { O:"0", Q:"0", D:"0", I:"1", L:"1", S:"5", B:"8", Z:"2", G:"6", T:"7" };
+  const AMB_L = { "0":"O", "1":"I", "5":"S", "8":"B", "2":"Z", "6":"G", "7":"T" };
+  function pcCandidates(raw){
+    const c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (c.length < 5 || c.length > 7) return [];
+    const out = c.slice(0, -3), inw = c.slice(-3);
+    const d = /\d/.test(inw[0]) ? inw[0] : AMB_D[inw[0]];
+    const ls = [...inw.slice(1)].map(ch => /[A-Z]/.test(ch) ? ch : AMB_L[ch]);
+    if (!d || ls.some(x => !x)) return [];
+    let combos = [""];
+    for (const ch of out){ const o = new Set([ch]); if (AMB_D[ch]) o.add(AMB_D[ch]); if (AMB_L[ch]) o.add(AMB_L[ch]); combos = combos.flatMap(pre => [...o].map(x => pre + x)); }
+    return combos.filter(o => /^[A-Z]{1,2}\d[A-Z\d]?$/.test(o)).map(o => o + " " + d + ls.join(""));
+  }
+  function cleanPc(raw){
+    const typed = normPc(raw), cands = pcCandidates(raw);
+    if (!cands.length) return typed;
+    if (!PCDB) return PC_RE.test(typed) ? typed : cands[0];
+    let best = null, bs = -1;
+    for (const c of [typed, ...cands]){
+      if (!/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(c)) continue;
+      const [o, i] = c.split(" "), sc = (PCDB.s[o + " " + i[0]] ? 2 : PCDB.o[o] ? 1 : 0) + (c === typed ? 0.5 : 0);
+      if (sc > bs){ bs = sc; best = c; }
+    }
+    return bs >= 1 ? best : typed;
+  }
+  // a drop's postcode, or one found in its address if the postcode box was left empty
+  function pcOf(s){
+    if (s.postcode) return s.postcode;
+    const m = String(s.address || "").match(new RegExp(PC_RE.source, "gi"));
+    return m ? m[m.length - 1] : "";
+  }
+  fetch("ukpc.json").then(r => r.ok ? r.json() : null).then(d => { PCDB = d; render(); }).catch(() => {});
+  const CFG = window.FDR_CONFIG || {};
+  const defSet = { email: CFG.email || "", depot: CFG.depot ? normPc(CFG.depot) : "", stopMins: Number(CFG.stopMins) >= 0 && CFG.stopMins !== "" && CFG.stopMins != null ? Number(CFG.stopMins) : 10, factor:1.3, back:true, odoA:"", odoB:"" };
+  const S = () => (state.settings = { ...defSet, ...(state.settings||{}) });
+  function locate(pc){
+    if (!PCDB || !pc) return null;
+    const m = cleanPc(pc).match(/^([A-Z]{1,2}\d[A-Z\d]?) (\d)[A-Z]{2}$/); if (!m) return null;
+    const v = PCDB.s[m[1] + " " + m[2]] || PCDB.o[m[1]];
+    return v ? { lat: v[0]/1e4, lng: v[1]/1e4 } : null;
+  }
+  function crow(a, b){
+    const R = 3958.8, r = x => x*Math.PI/180;
+    const dLa = r(b.lat-a.lat), dLo = r(b.lng-a.lng);
+    const h = Math.sin(dLa/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;
+    return 2*R*Math.asin(Math.sqrt(h));
+  }
+  function legOf(a, b){
+    const mi = crow(a, b) * (Number(S().factor) || 1.3);
+    const mph = mi < 2 ? 16 : mi < 6 ? 22 : mi < 15 ? 30 : mi < 40 ? 40 : 50;
+    return { mi, min: mi / mph * 60 + (mi > 0.1 ? 2 : 0) };
+  }
+  const fmtMi = m => m >= 100 ? Math.round(m) : (Math.round(m*10)/10).toFixed(1);
+  const fmtT = min => { min = Math.round(min); const h = Math.floor(min/60), m = min%60; return h ? h+"h "+String(m).padStart(2,"0")+"m" : m+"m"; };
+  const clock = ms => new Date(ms).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+
+  function planEst(){
+    const set = S(), all = routeOrder(), depot = locate(set.depot), stopM = Number(set.stopMins) || 0;
+    const legs = {}, total = { mi:0, min:0 }, left = { mi:0, min:0 }, missing = [];
+    let prev = depot, firstId = null;
+    for (const s of all){
+      const here = locate(pcOf(s));
+      if (!here){ missing.push(s.drop); continue; }
+      if (!firstId) firstId = s.id;
+      if (prev){ const l = legOf(prev, here); legs[s.id] = l; total.mi += l.mi; total.min += l.min; }
+      prev = here;
+    }
+    let backLeg = null;
+    if (set.back && depot && prev && prev !== depot){ backLeg = legOf(prev, depot); total.mi += backLeg.mi; total.min += backLeg.min; }
+    let pos = depot;
+    for (const s of all) if (s.done){ const h = locate(pcOf(s)); if (h) pos = h; }
+    const open = all.filter(s => !s.done);
+    for (const s of open){ const h = locate(pcOf(s)); if (!h) continue; if (pos){ const l = legOf(pos, h); left.mi += l.mi; left.min += l.min; } pos = h; }
+    if (!state.returnedAt && set.back && depot && pos && pos !== depot){ const l = legOf(pos, depot); left.mi += l.mi; left.min += l.min; }
+    return { legs, firstId, backLeg, total, left, missing, depot, stopsMin: all.length * stopM, openStopsMin: open.length * stopM, openN: open.length };
+  }
+
+  // ---------- exact routes from Google (Routes API) ----------
+  const GKEY = String(CFG.googleKey || "").trim();
+  const RC = "fdr.routes";
+  let gRes = {}, gErr = "", gTimer = null, gPending = "", gFailed = {};
+  try { gRes = JSON.parse(localStorage.getItem(RC) || "{}") || {}; } catch { gRes = {}; }
+  function routePts(){
+    const set = S(), pts = [];
+    if (set.depot) pts.push({ id:"depot", a: normPc(set.depot) + ", UK" });
+    for (const s of routeOrder()){
+      const a = pcOf(s) ? cleanPc(pcOf(s)) + ", UK" : (s.address ? s.address + ", UK" : "");
+      if (a) pts.push({ id: s.id, a });
+    }
+    if (set.back && set.depot && pts.length > 1) pts.push({ id:"back", a: normPc(set.depot) + ", UK" });
+    return pts;
+  }
+  const sigOf = pts => pts.map(p => p.id + "=" + p.a).join("|");
+  function googleFor(){
+    if (!GKEY) return null;
+    const pts = routePts(); if (pts.length < 2) return null;
+    const sig = sigOf(pts), r = gRes[sig];
+    if (r) return r;
+    queueGoogle(pts, sig); return null;
+  }
+  function queueGoogle(pts, sig){
+    if (gPending === sig || gFailed[sig]) return;
+    if (pts.length > 27){ gErr = "Google can route up to 25 drops at a time, so this run uses estimates."; return; }
+    if (!navigator.onLine){ gErr = "No signal, so showing estimates for now."; return; }
+    clearTimeout(gTimer);
+    gTimer = setTimeout(async () => {
+      gPending = sig;
+      try {
+        const body = { origin:{ address: pts[0].a }, destination:{ address: pts[pts.length-1].a },
+          intermediates: pts.slice(1, -1).map(p => ({ address: p.a })),
+          travelMode:"DRIVE", routingPreference:"TRAFFIC_UNAWARE", units:"IMPERIAL", regionCode:"GB" };
+        const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", { method:"POST",
+          headers:{ "Content-Type":"application/json", "X-Goog-Api-Key": GKEY,
+            "X-Goog-FieldMask":"routes.distanceMeters,routes.duration,routes.legs.distanceMeters,routes.legs.duration" },
+          body: JSON.stringify(body) });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || !j.routes || !j.routes[0]) throw new Error(j.error?.message || ("HTTP " + res.status));
+        const legs = {}; let back = null;
+        j.routes[0].legs.forEach((l, i) => {
+          const v = { mi: (l.distanceMeters || 0) / 1609.344, min: parseFloat(l.duration || "0") / 60 };
+          const id = pts[i+1].id; if (id === "back") back = v; else legs[id] = v;
+        });
+        gRes[sig] = { legs, back, firstId: pts[0].id === "depot" ? pts[1].id : null };
+        const keys = Object.keys(gRes); if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(k => delete gRes[k]);
+        try { localStorage.setItem(RC, JSON.stringify(gRes)); } catch {}
+        gErr = "";
+      } catch (e){
+        gFailed[sig] = true;
+        gErr = "Google route unavailable (" + String(e.message || e).slice(0, 80) + "), showing estimates.";
+      } finally { gPending = ""; render(); }
+    }, 1200);
+  }
+  addEventListener("online", () => { gFailed = {}; gErr = ""; render(); });
+
+  function plan(){
+    const est = planEst(), g = googleFor();
+    if (!g) return { ...est, source: "est" };
+    const set = S(), all = routeOrder(), stopM = Number(set.stopMins) || 0;
+    const total = { mi:0, min:0 }, left = { mi:0, min:0 };
+    Object.values(g.legs).forEach(l => { total.mi += l.mi; total.min += l.min; });
+    if (g.back){ total.mi += g.back.mi; total.min += g.back.min; }
+    const open = all.filter(s => !s.done);
+    open.forEach(s => { const l = g.legs[s.id]; if (l){ left.mi += l.mi; left.min += l.min; } });
+    if (!state.returnedAt && g.back){ left.mi += g.back.mi; left.min += g.back.min; }
+    const missing = all.filter(s => !s.postcode && !s.address).map(s => s.drop);
+    return { legs: g.legs, firstId: g.firstId, backLeg: g.back, total, left, missing, depot: set.depot ? true : null,
+      stopsMin: all.length * stopM, openStopsMin: open.length * stopM, openN: open.length, source: "google" };
+  }
+
+  function renderTotals(){
+    const all = sorted(), box = $("totals");
+    box.hidden = !all.length && $("setBox").hidden; if (!all.length){ $("finishLink").hidden = true; return; }
+    const set = S(), p = plan();
+    const ready = !!PCDB || p.source === "google";
+    $("tMilesLbl").textContent = p.source === "google" ? "road miles" : "miles (est.)";
+    $("tDriveLbl").textContent = p.source === "google" ? "driving" : "driving (est.)";
+    $("tMiles").textContent = ready ? fmtMi(p.total.mi) : "…";
+    $("tDrive").textContent = ready ? fmtT(p.total.min) : "…";
+    $("tDay").textContent = ready ? fmtT(p.total.min + p.stopsMin) : "…";
+    $("tDayLbl").textContent = "with " + (Number(set.stopMins)||0) + "m per drop";
+    $("tLeft").innerHTML = (p.openN || (returnsToBase() && !state.returnedAt && p.backLeg)) && ready && (state.startedAt || all.some(s=>s.done))
+      ? '<span>Left: <b>'+fmtMi(p.left.mi)+' mi</b> · <b>'+fmtT(p.left.min + p.openStopsMin)+'</b></span><span>Back about <b>'+clock(Date.now() + (p.left.min + p.openStopsMin)*60000)+'</b></span>' : "";
+    let act = "";
+    if (state.startedAt){
+      const end = state.finishedAt || Date.now();
+      act = '<span>On the road: <b>'+fmtT((end - state.startedAt)/60000)+'</b> (from '+clock(state.startedAt)+(state.finishedAt?' to '+clock(state.finishedAt):'')+')</span>'+(state.returnedAt ? '<span>Back at base <b>'+clock(state.returnedAt)+'</b></span>' : '');
+    }
+    const a = parseFloat(set.odoA), b = parseFloat(set.odoB);
+    if (Number.isFinite(a) && Number.isFinite(b) && b >= a) act += '<span>Van mileage: <b>'+Math.round(b - a)+' mi</b></span>';
+    $("tActual").innerHTML = act;
+    const warn = [];
+    if (!p.depot) warn.push(set.depot ? "Base postcode not recognised." : "Add your base postcode in Settings to include the drive out and back.");
+    if (p.missing.length) warn.push("Not counted: " + p.missing.map(n => { const st = all.find(x => x.drop === n), pc = st && pcOf(st); return "drop " + n + (pc ? " (postcode " + normPc(pc) + " not recognised, check it in Edit)" : " (no postcode, add one in Edit)"); }).join("; ") + ".");
+    if (GKEY && p.source !== "google" && gErr) warn.push(gErr);
+    else if (GKEY && p.source !== "google" && gPending) warn.push("Getting road miles from Google…");
+    $("finishLink").hidden = !!state.finishedAt || !all.length;
+    if (finishAsk && !state.finishedAt){
+      const open = all.filter(s => !s.done).length;
+      $("tWarn").innerHTML = '<div class="confirm" style="width:100%">'+open+' drop'+(open>1?'s':'')+' not delivered. Finish the day anyway? They\'ll show as not delivered on the report.<button class="btn small danger" data-act="finish">Finish day</button><button class="btn small" data-act="finish-no">Keep going</button></div>';
+      return;
+    }
+    $("tWarn").innerHTML = warn.length ? '<span style="color:var(--warn)">'+esc(warn.join(" "))+'</span>' : "";
+    $("tFrom").textContent = p.depot ? "From "+normPc(set.depot)+(set.back ? ", back to base" : ", ending at last drop") : "From first drop";
+  }
+
+  if (GKEY) { const h = document.getElementById("setHint"); if (h) h.textContent = "Road miles and drive times come from Google (without live traffic). Road factor only applies if Google can't be reached. Enter the van's odometer for the real mileage."; }
+  function fillSettings(){ const set = S(); $("sDepot").value = set.depot; $("sStop").value = set.stopMins; $("sFactor").value = set.factor; $("sReturn").checked = !!set.back; $("sOdoA").value = set.odoA; $("sOdoB").value = set.odoB; $("sDriver").value = set.driver || ""; $("sVan").value = set.van || ""; }
+  $("setBtn").onclick = () => { const b = $("setBox"); b.hidden = !b.hidden; if (!b.hidden) fillSettings(); };
+  $("setDone").onclick = () => { $("setBox").hidden = true; };
+  let setTimer = null;
+  function readSettings(){
+    const set = S();
+    set.depot = normPc($("sDepot").value);
+    const sm = parseFloat($("sStop").value); set.stopMins = Number.isFinite(sm) && sm >= 0 ? sm : 10;
+    const f = parseFloat($("sFactor").value); set.factor = Number.isFinite(f) && f >= 1 && f <= 2 ? f : 1.3;
+    set.back = $("sReturn").checked; set.odoA = $("sOdoA").value.trim(); set.odoB = $("sOdoB").value.trim(); set.driver = $("sDriver").value.trim(); set.van = $("sVan").value.trim().toUpperCase();
+    renderTotals(); renderWho(); clearTimeout(setTimer); setTimer = setTimeout(persist, 800);
+  }
+  ["sDepot","sStop","sFactor","sOdoA","sOdoB","sDriver","sVan"].forEach(id => $(id).addEventListener("input", readSettings));
+  $("sReturn").addEventListener("change", readSettings);
+  setInterval(() => { if (state.startedAt && !state.finishedAt && !$("totals").hidden) renderTotals(); }, 60000);
+  function markStart(){ if (!state.startedAt){ state.startedAt = Date.now(); persist(); } }
+  const returnsToBase = () => !!(S().back && S().depot);
+  function checkFinish(){
+    const all = state.stops, done = all.length && all.every(s => s.done);
+    if (done){
+      if (!state.lastDropAt) state.lastDropAt = Date.now();
+    } else { delete state.lastDropAt; }
+  }
+  const noteCount = s => 1 + ((s.extra && s.extra.length) || 0);
+  const otherNames = s => [...new Set((s.extra||[]).map(x => (x.name||"").trim()).filter(n => n && n.toLowerCase() !== (s.name||"").trim().toLowerCase()))];
+  // ---------- render ----------
+  function render(){
+    const all = sorted(), done = all.filter(s=>s.done).length, nxt = nextStop(), failedN = all.filter(s => s.failed).length;
+    $("dateLabel").textContent = fmtDay(todayKey());
+    $("countLabel").textContent = (done - failedN)+" of "+all.length+" delivered"+(failedN ? " · "+failedN+" can't deliver" : "");
+    $("barFill").style.width = all.length ? (100*done/all.length)+"%" : "0%";
+    $("empty").hidden = all.length > 0;
+    $("clearBtn").hidden = all.length === 0;
+
+    // old run banner
+    const b = $("banner");
+    if (all.length && state.date !== todayKey()){
+      b.hidden = false;
+      b.innerHTML = '<div>These drops are from <b>'+esc(fmtDay(state.date))+'</b>.</div><div class="acts"><button class="btn small" data-act="newday">Start a fresh run for today</button><button class="btn small" data-act="keepday">Keep them</button></div>';
+    } else b.hidden = true;
+
+    // next sign
+    const nb = $("nextBox");
+    if (skipFor && (!nxt || skipFor !== nxt.id)) skipFor = null;
+    if (nxt && !state.finishedAt){
+      nb.hidden = false;
+      nb.innerHTML = '<div class="row"><span class="badge num">'+nxt.drop+'</span><div style="min-width:0"><div class="eyebrow">Next drop</div><h2>'+esc(nxt.name||"Unnamed drop")+'</h2><div class="addr">'+esc(nxt.address)+'</div>'
+        + (nxt.postcode ? '<span class="pc">'+esc(nxt.postcode)+'</span>' : '')
+        + (nxt.note ? '<div class="addr" style="margin-top:6px">⚑ '+esc(nxt.note)+'</div>' : '')
+        + (noteCount(nxt) > 1 ? '<div><span class="multi">⚠ '+noteCount(nxt)+' delivery notes for this drop</span>'+(otherNames(nxt).length ? '<div class="multi-list">Also for: '+esc(otherNames(nxt).join(", "))+'</div>' : '')+'</div>' : '')
+        + (nxt.skipped ? '<div class="retry">Skipped earlier'+(nxt.skipReason ? ' ('+esc(nxt.skipReason)+')' : '')+' at '+esc(nxt.skipTime||'')+' · trying again</div>' : '')
+        + '</div></div><div class="acts"><a class="btn primary grow" target="_blank" rel="noopener" href="'+esc(dirUrl(nxt))+'">Directions</a><button class="btn ghost-on-sign grow" data-act="done" data-id="'+nxt.id+'">Delivered</button>'
+        + (skipFor === nxt.id ? '' : '<button class="btn skip" data-act="skip-open" data-id="'+nxt.id+'">Skip</button>') + '</div>'
+        + (skipFor === nxt.id ? skipBox(nxt) : '');
+    } else if (all.length){
+      nb.hidden = false;
+      const pb = plan(), bl = pb.backLeg, dn = all.filter(delivered).length, doneTxt = dn === all.length ? 'All '+all.length+' drops delivered' : dn+' of '+all.length+' delivered';
+      if (!state.finishedAt && returnsToBase()){
+        nb.innerHTML = '<div class="row"><span class="badge">⌂</span><div style="min-width:0"><div class="eyebrow">'+doneTxt+' · last leg</div><h2>Back to base</h2>'
+          + (bl ? '<div class="addr">'+fmtMi(bl.mi)+' mi · '+(pb.source === 'google' ? '' : 'about ')+fmtT(bl.min)+'</div>' : '')
+          + '<span class="pc">'+esc(normPc(S().depot))+'</span></div></div>'
+          + '<div class="acts"><a class="btn primary grow" target="_blank" rel="noopener" href="'+esc(dirUrl({ postcode: S().depot }))+'">Directions</a><button class="btn ghost-on-sign grow" data-act="finish">Back at base · finish day</button></div>';
+      } else if (!state.finishedAt){
+        nb.innerHTML = '<div class="row"><span class="badge">✓</span><div><div class="eyebrow">Last drop done</div><h2>'+doneTxt+'</h2><div class="addr">Tap Finish day to stop the clock.</div></div></div>'
+          + '<div class="acts"><button class="btn primary grow" data-act="finish">Finish day</button></div>';
+      } else {
+        const undone = all.filter(s => !delivered(s)).length;
+        nb.innerHTML = '<div class="row"><span class="badge">✓</span><div><div class="eyebrow">Day finished '+clock(state.finishedAt)+(state.returnedAt ? ' · back at base' : '')+'</div><h2>'+(undone ? (all.length-undone)+' of '+all.length+' drops delivered' : 'All '+all.length+' drops delivered')+'</h2>'
+          + (state.startedAt ? '<div class="addr">On the road '+fmtT((state.finishedAt - state.startedAt)/60000)+'</div>' : '') + '</div></div>'
+          + '<div class="acts"><button class="btn primary grow" data-act="mail-open">Email report</button><button class="btn ghost-on-sign" data-act="report">PDF</button><button class="btn ghost-on-sign" data-act="csv">CSV</button><button class="btn ghost-on-sign" data-act="reopen">Reopen day</button></div>';
+      }
+    } else nb.hidden = true;
+
+    const r = routeUrl(), rb = $("routeBtn");
+    const openCount = all.filter(s=>!s.done).length;
+    rb.hidden = !r || openCount < 2;
+    if (r){ rb.href = r; rb.textContent = mapApp === "apple" ? "Apple Maps: next drop only" : (openCount > 10 ? "Route next 10 drops" : "Full route in Maps"); }
+
+    const legsNow = PCDB ? plan() : { legs:{} };
+    $("list").innerHTML = all.map(s => {
+      const isNext = nxt && s.id === nxt.id;
+      const conf = pendingConfirm === s.id;
+      return '<li class="stop'+(s.done?' done':'')+(s.failed?' failed':'')+(isNext?' is-next':'')+'"><div class="row"><span class="badge num">'+s.drop+'</span><div class="info">'
+        + '<div class="name">'+esc(s.name||"Unnamed drop")+' '+(s.example?'<span class="chip ex">Example</span>':'')+(noteCount(s)>1?' <span class="chip many">⚠ '+noteCount(s)+' notes</span>':'')+(s.failed?' <span class="chip fail">Can\'t deliver'+(s.failReason?' · '+esc(s.failReason):'')+'</span>':s.done?' <span class="chip ok">Delivered '+esc(s.doneAt||"")+'</span>':s.skipped?' <span class="chip skipped">Skipped '+esc(s.skipTime||"")+(s.skipReason?' · '+esc(s.skipReason):'')+'</span>':'')+'</div>'
+        + '<div class="addr">'+esc(s.address)+(s.postcode?' · <span class="pcs">'+esc(s.postcode)+'</span>':'')+'</div>'
+        + (s.phone ? '<div class="addr num">'+esc(s.phone)+'</div>' : '')
+        + (PCDB && !s.done && !locate(pcOf(s)) ? '<div class="retry">'+(pcOf(s) ? 'Postcode '+esc(normPc(pcOf(s)))+' not recognised · check it in Edit' : 'No postcode · add one in Edit')+'</div>' : '')
+        + (otherNames(s).length ? '<div class="extras">Also for: '+esc(otherNames(s).join(", "))+'</div>' : '')
+        + (s.note ? '<span class="note">'+esc(s.note)+'</span>' : '')
+        + (legsNow.legs[s.id] ? '<div class="leg">'+fmtMi(legsNow.legs[s.id].mi)+' mi · '+(legsNow.source === 'google' ? '' : 'about ')+fmtT(legsNow.legs[s.id].min)+' from '+(s.id === legsNow.firstId ? 'base' : 'previous drop')+'</div>' : '')
+        + '</div></div>'
+        + (conf ? '<div class="confirm">Remove drop '+s.drop+'?<button class="btn small danger" data-act="del-yes" data-id="'+s.id+'">Remove</button><button class="btn small" data-act="del-no">Keep</button></div>'
+          : '<div class="acts"><a class="btn small" target="_blank" rel="noopener" href="'+esc(dirUrl(s))+'">Directions</a>'
+            + '<button class="btn small" data-act="'+(s.done?'undo':'done')+'" data-id="'+s.id+'">'+(s.failed?'Undo':s.done?'Not delivered':'Delivered')+'</button>'
+            + '<button class="btn small" data-act="edit" data-id="'+s.id+'">Edit</button>'
+            + '<button class="btn small" data-act="del" data-id="'+s.id+'" aria-label="Remove drop '+s.drop+'">Remove</button></div>')
+        + '</li>';
+    }).join("") + (returnsToBase() && all.length ? '<li class="stop'+(state.returnedAt?' done':'')+(!nxt && !state.returnedAt?' is-next':'')+'"><div class="row"><span class="badge">⌂</span><div class="info">'
+      + '<div class="name">Back to base'+(state.returnedAt?' <span class="chip ok">Back '+clock(state.returnedAt)+'</span>':'')+'</div>'
+      + '<div class="addr"><span class="pcs">'+esc(normPc(S().depot))+'</span></div>'
+      + (legsNow.backLeg ? '<div class="leg">'+fmtMi(legsNow.backLeg.mi)+' mi · '+(legsNow.source === 'google' ? '' : 'about ')+fmtT(legsNow.backLeg.min)+' from last drop</div>' : '')
+      + '</div></div><div class="acts"><a class="btn small" target="_blank" rel="noopener" href="'+esc(dirUrl({ postcode: S().depot }))+'">Directions</a>'
+      + (state.finishedAt ? '' : (!nxt ? '<button class="btn small" data-act="finish">Back at base · finish day</button>' : ''))
+      + '</div></li>' : '');
+
+    renderTotals(); renderWho();
+    $("mapG").setAttribute("aria-pressed", mapApp==="google");
+    $("mapA").setAttribute("aria-pressed", mapApp==="apple");
+  }
+
+
+  let finishAsk = false, skipFor = null, skipPick = "";
+  const REASONS = ["Closed", "No one in", "No access or parking", "Wrong address", "Come back later", "Refused"];
+  function skipBox(st){
+    return '<div class="skipbox"><div class="eyebrow">Why skip drop '+st.drop+'?</div><div class="reasons">'
+      + REASONS.map(r => '<button type="button" class="reason" data-act="skip-reason" data-r="'+esc(r)+'" aria-pressed="'+(skipPick === r)+'">'+esc(r)+'</button>').join("")
+      + '</div><div class="acts"><button class="btn grow" data-act="skip-later" data-id="'+st.id+'">Skip · try later</button>'
+      + '<button class="btn danger grow" data-act="skip-fail" data-id="'+st.id+'">Can\'t deliver</button></div>'
+      + '<button class="linkbtn" style="align-self:flex-start" data-act="skip-cancel">Cancel</button></div>';
+  }
+  function renderWho(){
+    const set = S(), w = $("who");
+    if (!set.driver && !set.van){ w.innerHTML = '<span class="add">+ Add driver and van</span>'; return; }
+    w.innerHTML = (set.driver ? '<span class="drv">'+esc(set.driver)+'</span>' : '<span class="add">+ Driver</span>')
+      + (set.van ? '<span class="plate">'+esc(set.van)+'</span>' : '<span class="add">+ Van reg</span>')
+      + '<span class="edit">Change</span>';
+  }
+  $("who").onclick = () => { $("totals").hidden = false; const b = $("setBox"); b.hidden = false; fillSettings(); $("totals").scrollIntoView({ block:"start", behavior:"smooth" }); setTimeout(() => $(S().driver ? "sVan" : "sDriver").focus(), 350); };
+  // ---------- PDF report ----------
+  function makeReport(){ const r = buildPdf(); if (r) deliverPdf(r.blob, r.name); }
+  function buildPdf(){
+    if (!window.jspdf){ status("The report maker hasn't loaded. Check your signal, then close and reopen the app."); return null; }
+    const { jsPDF } = window.jspdf, doc = new jsPDF({ unit:"mm", format:"a4" });
+    const set = S(), all = sorted(), p = plan(), W = 210, M = 14, google = p.source === "google";
+    const [yy, mm, dd] = (state.date || todayKey()).split("-").map(Number);
+    const day = new Date(yy, mm-1, dd).toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+    const ink = [25,29,35], blue = [24,112,214], mute = [110,118,130], rule = [220,224,230];
+    const header = () => {
+      doc.setFillColor(...ink); doc.rect(0, 0, W, 28, "F");
+      doc.setFillColor(74,163,255); doc.rect(0, 28, W, 1.2, "F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(74,163,255);
+      doc.text("FUSION DROP RUNNER", M, 10.5, { charSpace: 0.9 });
+      doc.setTextColor(255,255,255); doc.setFontSize(17); doc.text("Delivery report", M, 20.5);
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(day, W - M, 20.5, { align:"right" });
+    };
+    header();
+    let y = 38;
+    const kv = [
+      ["Driver", set.driver || "-"], ["Van", set.van || "-"],
+      ["Base", set.depot ? normPc(set.depot) : "Not set"], ["Return to base", returnsToBase() ? "Yes" : "No"],
+      ["Started", state.startedAt ? clock(state.startedAt) : "-"],
+      [state.returnedAt ? "Back at base" : "Finished", state.finishedAt ? clock(state.finishedAt) : "Not finished yet"],
+    ];
+    doc.setFontSize(9.5);
+    kv.forEach(([k, v], i) => {
+      const x = M + (i % 2) * 92, yy2 = y + Math.floor(i / 2) * 6;
+      doc.setFont("helvetica","normal"); doc.setTextColor(...mute); doc.text(k, x, yy2);
+      doc.setFont("helvetica","bold"); doc.setTextColor(...ink); doc.text(String(v), x + 30, yy2);
+    });
+    y += 22;
+    const deliveredN = all.filter(delivered).length, failedN = all.filter(s => s.failed).length, skippedN = all.filter(s => !s.done && s.skipped).length, notes = all.reduce((n, s) => n + noteCount(s), 0);
+    const a = parseFloat(set.odoA), b = parseFloat(set.odoB), odo = Number.isFinite(a) && Number.isFinite(b) && b >= a ? Math.round(b - a) + " mi" : "-";
+    const onRoad = state.startedAt ? fmtT(((state.finishedAt || Date.now()) - state.startedAt) / 60000) : "-";
+    const boxes = [
+      ["Drops delivered", deliveredN + " of " + all.length, [failedN ? failedN + " can't deliver" : "", skippedN ? skippedN + " skipped" : "", notes > all.length ? notes + " notes" : ""].filter(Boolean).join(", ")],
+      [google ? "Road miles" : "Miles (est.)", fmtMi(p.total.mi), returnsToBase() ? "incl. return to base" : "no return leg"],
+      [google ? "Driving time" : "Driving (est.)", fmtT(p.total.min), "plus " + fmtT(p.stopsMin) + " at drops"],
+      ["Time on the road", onRoad, "Van odometer: " + odo],
+    ];
+    const bw = (W - 2*M - 3*4) / 4;
+    boxes.forEach(([l, v, sub], i) => {
+      const x = M + i * (bw + 4);
+      doc.setDrawColor(...rule); doc.setFillColor(246,248,251); doc.roundedRect(x, y, bw, 24, 2, 2, "FD");
+      doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...mute); doc.text(l.toUpperCase(), x + 3, y + 5.5, { charSpace: 0.3 });
+      doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.setTextColor(...blue); doc.text(String(v), x + 3, y + 14);
+      doc.setFont("helvetica","normal"); doc.setFontSize(7.2); doc.setTextColor(...mute); doc.text(doc.splitTextToSize(sub, bw - 6)[0] || "", x + 3, y + 20);
+    });
+    y += 33;
+    const cols = [ ["#", 9], ["Customer", 44], ["Address", 54], ["Postcode", 22], ["Notes", 13], ["Delivered", 18], ["Leg", 22] ];
+    const head = () => {
+      doc.setFillColor(...ink); doc.rect(M, y, W - 2*M, 7.5, "F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(255,255,255);
+      let x = M + 2; cols.forEach(([t, w]) => { doc.text(t, x, y + 5); x += w; });
+      y += 7.5;
+    };
+    head();
+    const rows = all.map(s => {
+      const l = p.legs[s.id];
+      const extra = otherNames(s);
+      return [String(s.drop), (s.name || "Unnamed drop") + (extra.length ? "\n(also: " + extra.join(", ") + ")" : ""), s.address || "", s.postcode || "",
+        String(noteCount(s)), s.failed ? "Can't deliver" + (s.failReason ? ": " + s.failReason : "") : s.done ? (s.doneAt || "Yes") + (s.skipped ? " (skipped first)" : "") : s.skipped ? "Skipped" + (s.skipReason ? ": " + s.skipReason : "") : "Not delivered", l ? fmtMi(l.mi) + " mi\n" + fmtT(l.min) : "-"];
+    });
+    if (returnsToBase() && all.length){
+      const l = p.backLeg;
+      rows.push(["", "Back to base", "", normPc(set.depot), "", state.returnedAt ? clock(state.returnedAt) : "Not back yet", l ? fmtMi(l.mi) + " mi\n" + fmtT(l.min) : "-"]);
+    }
+    doc.setFontSize(8.5);
+    rows.forEach((r, ri) => {
+      const cells = r.map((t, i) => doc.splitTextToSize(String(t), cols[i][1] - 3));
+      const h = Math.max(...cells.map(c => c.length)) * 3.9 + 3.6;
+      if (y + h > 282){ doc.addPage(); header(); y = 36; head(); doc.setFontSize(8.5); }
+      if (ri % 2 === 1){ doc.setFillColor(246,248,251); doc.rect(M, y, W - 2*M, h, "F"); }
+      let x = M + 2;
+      cells.forEach((c, i) => {
+        const bold = i === 0 || i === 1, warn = (i === 4 && Number(r[4]) > 1) || (i === 5 && /^Skipped|skipped first/.test(r[5])), late = i === 5 && /^(Not delivered|Can't deliver)/.test(r[5]);
+        doc.setFont("helvetica", bold || warn ? "bold" : "normal");
+        doc.setTextColor(...(warn ? [190,110,0] : late ? [190,40,40] : i === 0 ? blue : ink));
+        doc.text(c, x, y + 4.6);
+        x += cols[i][1];
+      });
+      doc.setDrawColor(...rule); doc.line(M, y + h, W - M, y + h);
+      y += h;
+    });
+    const pages = doc.getNumberOfPages();
+    for (let i = 1; i <= pages; i++){
+      doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...mute);
+      doc.text((google ? "Miles and times: Google road distances, without live traffic." : "Miles and times are estimates from postcode locations.") + "  Report made " + new Date().toLocaleString("en-GB", { dateStyle:"short", timeStyle:"short" }) + ".", M, 290);
+      doc.text("Page " + i + " of " + pages, W - M, 290, { align:"right" });
+    }
+    const name = "Drop report " + (state.date || todayKey()) + (set.driver ? " " + set.driver.replace(/[^\w ]+/g, "") : "") + ".pdf";
+    return { blob: doc.output("blob"), name };
+  }
+  async function deliverPdf(blob, name){
+    const file = new File([blob], name, { type: "application/pdf" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: name }); return; }
+    } catch (e){ if (e && e.name === "AbortError") return; }
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status("Report downloaded. Open it to print or share."); setTimeout(() => status(""), 6000);
+  }
+
+  // ---------- CSV + email ----------
+  function reportBase(){
+    const set = S(), d = state.date || todayKey();
+    return "Drop report " + d + (set.driver ? " " + set.driver.replace(/[^\w ]+/g, "") : "");
+  }
+  function buildCsv(){
+    const set = S(), all = routeOrder(), p = plan(), d = state.date || todayKey();
+    const q = v => { v = v == null ? "" : String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const rows = [["Date","Driver","Van","Drop","Customer","Also for","Address","Postcode","Phone","Delivery notes","Instructions","Status","Time","Reason","Leg miles","Leg minutes","Miles source"]];
+    const src = p.source === "google" ? "Google" : "Estimate";
+    for (const s of all){
+      const l = p.legs[s.id];
+      const status = s.failed ? "Can't deliver" : s.done ? "Delivered" : s.skipped ? "Skipped" : "Not delivered";
+      rows.push([d, set.driver || "", set.van || "", s.drop, s.name || "", otherNames(s).join("; "), s.address || "", normPc(pcOf(s)), s.phone || "",
+        noteCount(s), s.note || "", status, s.done ? (s.doneAt || "") : (s.skipped ? s.skipTime || "" : ""), s.failed ? (s.failReason || "") : (s.skipped ? s.skipReason || "" : ""),
+        l ? (Math.round(l.mi * 10) / 10).toFixed(1) : "", l ? Math.round(l.min) : "", l ? src : ""]);
+    }
+    if (returnsToBase() && all.length){
+      const l = p.backLeg;
+      rows.push([d, set.driver || "", set.van || "", "Base", "Back to base", "", "", normPc(set.depot), "", "", "", state.returnedAt ? "Back at base" : "Not back yet",
+        state.returnedAt ? clock(state.returnedAt) : "", "", l ? (Math.round(l.mi * 10) / 10).toFixed(1) : "", l ? Math.round(l.min) : "", l ? src : ""]);
+    }
+    const text = "﻿" + rows.map(r => r.map(q).join(",")).join("\r\n") + "\r\n";
+    return { blob: new Blob([text], { type: "text/csv" }), name: reportBase() + ".csv", text };
+  }
+  function mailSubject(){
+    const set = S(), [yy, mm, dd] = (state.date || todayKey()).split("-").map(Number);
+    const day = new Date(yy, mm-1, dd).toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short", year:"numeric" });
+    return "Delivery report " + day + (set.driver ? " · " + set.driver : "") + (set.van ? " (" + set.van + ")" : "");
+  }
+  function mailBody(){
+    const set = S(), all = sorted(), p = plan(), google = p.source === "google";
+    const dn = all.filter(delivered).length, fn = all.filter(s => s.failed).length, sk = all.filter(s => !s.done && s.skipped).length, nd = all.filter(s => !s.done).length;
+    const a = parseFloat(set.odoA), b = parseFloat(set.odoB);
+    const lines = [mailSubject(), ""];
+    if (set.driver || set.van) lines.push("Driver: " + (set.driver || "-") + "   Van: " + (set.van || "-"));
+    lines.push("Drops: " + dn + " of " + all.length + " delivered" + (fn ? ", " + fn + " can't deliver" : "") + (sk ? ", " + sk + " skipped" : "") + (nd - sk > 0 ? ", " + (nd - sk) + " not delivered" : ""));
+    lines.push((google ? "Road miles: " : "Miles (est.): ") + fmtMi(p.total.mi) + "   Driving: " + fmtT(p.total.min) + (returnsToBase() ? " (incl. return to base)" : ""));
+    if (Number.isFinite(a) && Number.isFinite(b) && b >= a) lines.push("Van odometer: " + Math.round(b - a) + " mi (" + a + " to " + b + ")");
+    if (state.startedAt) lines.push("Started " + clock(state.startedAt) + (state.finishedAt ? (state.returnedAt ? "   Back at base " : "   Finished ") + clock(state.finishedAt) + "   On the road " + fmtT((state.finishedAt - state.startedAt) / 60000) : "   Not finished yet"));
+    const issues = all.filter(s => s.failed || !s.done);
+    if (issues.length){ lines.push("", "Not delivered:"); issues.forEach(s => lines.push("  " + s.drop + ". " + (s.name || "Unnamed drop") + " – " + (s.failed ? "can't deliver" + (s.failReason ? " (" + s.failReason + ")" : "") : s.skipped ? "skipped" + (s.skipReason ? " (" + s.skipReason + ")" : "") : "not delivered"))); }
+    lines.push("", "PDF report and CSV spreadsheet attached.");
+    return lines.join("\n");
+  }
+  function fillMail(){
+    const set = S(), to = set.email || "";
+    $("mTo").value = to; $("mToTxt").textContent = to || "add an address above";
+    $("mSubj").textContent = mailSubject(); $("mSummary").textContent = mailBody();
+    $("mMailto").href = "mailto:" + encodeURIComponent(to).replace(/%40/g, "@").replace(/%2C/g, ",") + "?subject=" + encodeURIComponent(mailSubject()) + "&body=" + encodeURIComponent(mailBody());
+  }
+  function openMail(){
+    fillMail();
+    const share = canShareFiles();
+    $("mShare").hidden = !share; $("mMore").hidden = !share; $("mSteps").hidden = share && !$("mMore").open;
+    $("mNote").textContent = share ? "" : "This browser can't hand attachments to your email app, so save both files first, then attach them from Downloads.";
+    $("mailSheet").hidden = false;
+  }
+  $("mMore").addEventListener("toggle", () => { $("mSteps").hidden = !$("mMore").open; });
+  $("mTo").addEventListener("change", () => persist());
+  $("mTo").addEventListener("input", () => { S().email = $("mTo").value.trim(); fillMail(); clearTimeout(setTimer); setTimer = setTimeout(persist, 800); });
+  async function copyText(txt, label){
+    try { await navigator.clipboard.writeText(txt); status(label + " copied"); }
+    catch { status("Couldn't copy. Press and hold the text to copy it instead."); }
+    setTimeout(() => status(""), 3000);
+  }
+  async function shareBoth(){
+    const pdf = buildPdf(); if (!pdf) return;
+    const csv = buildCsv(), to = S().email;
+    const files = [new File([pdf.blob], pdf.name, { type: "application/pdf" }), new File([csv.blob], csv.name, { type: "text/csv" })];
+    if (to) { try { await navigator.clipboard.writeText(to); } catch {} }
+    try { await navigator.share({ files, title: mailSubject(), text: mailBody() }); status(to ? "Paste " + to + " into To" : ""); }
+    catch (e){ if (!e || e.name !== "AbortError"){ status("Couldn't open the share menu. Use the steps below instead."); $("mMore").open = true; $("mSteps").hidden = false; } }
+    setTimeout(() => status(""), 6000);
+  }
+  const canShareFiles = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(["x"], "x.pdf", { type: "application/pdf" }), new File(["x"], "x.csv", { type: "text/csv" })] })); } catch { return false; } };
+  function saveCsv(){
+    const c = buildCsv(), url = URL.createObjectURL(c.blob), a = document.createElement("a");
+    a.href = url; a.download = c.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status("Spreadsheet downloaded."); setTimeout(() => status(""), 6000);
+  }
+  // ---------- actions ----------
+  document.addEventListener("click", e => {
+    const dir = e.target.closest("a[href*='maps']");
+    if (dir && state.stops.length && !state.startedAt){ markStart(); setTimeout(render, 0); }
+    const t = e.target.closest("[data-act]"); if (!t) return;
+    const id = t.dataset.id, s = state.stops.find(x => x.id === id);
+    switch (t.dataset.act){
+      case "skip-open": skipFor = id; skipPick = ""; setTimeout(() => { const b = document.querySelector(".skipbox"); if (b) b.scrollIntoView({ block:"center", behavior:"smooth" }); }, 60); break;
+      case "skip-cancel": skipFor = null; break;
+      case "skip-reason": skipPick = t.dataset.r; break;
+      case "skip-later": if (s){ markStart(); s.skipped = true; s.skipReason = skipPick; s.skipAt = Date.now(); s.skipTime = clock(s.skipAt); s.skipCount = (s.skipCount||0) + 1; skipFor = null; persist(); } break;
+      case "skip-fail": if (s){ markStart(); s.done = true; s.failed = true; s.failReason = skipPick || s.skipReason || ""; s.doneAt = clock(Date.now()); skipFor = null; checkFinish(); persist(); } break;
+      case "done": if (s){ markStart(); delete s.failed; delete s.failReason; s.done = true; s.doneAt = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}); checkFinish(); persist(); } break;
+      case "undo": if (s){ s.done = false; delete s.doneAt; delete s.failed; delete s.failReason; checkFinish(); persist(); } break;
+      case "edit": if (s) openSheet({ stop:s }); return;
+      case "base": case "finish": markStart(); state.finishedAt = Date.now(); if (returnsToBase()) state.returnedAt = state.finishedAt; else delete state.returnedAt; finishAsk = false; persist(); break;
+      case "finish-ask": { const open = state.stops.filter(x => !x.done).length; if (open) finishAsk = true; else { markStart(); state.finishedAt = Date.now(); if (returnsToBase()) state.returnedAt = state.finishedAt; persist(); } break; }
+      case "finish-no": finishAsk = false; break;
+      case "base-undo": case "reopen": delete state.returnedAt; delete state.finishedAt; persist(); break;
+      case "report": makeReport(); return;
+      case "csv": saveCsv(); return;
+      case "mail-open": openMail(); return;
+      case "mail-close": $("mailSheet").hidden = true; persist(); return;
+      case "mail-share": shareBoth(); return;
+      case "copy-to": if (S().email) copyText(S().email, "Address"); else $("mTo").focus(); return;
+      case "copy-subj": copyText(mailSubject(), "Subject"); return;
+      case "copy-body": copyText(mailBody(), "Message"); return;
+      case "del": pendingConfirm = id; break;
+      case "del-no": pendingConfirm = null; break;
+      case "del-yes": state.stops = state.stops.filter(x => x.id !== id); pendingConfirm = null; persist(); break;
+      case "newday": state = { date: todayKey(), stops: [], settings: { ...S(), odoA:"", odoB:"" } }; persist(); break;
+      case "keepday": state.date = todayKey(); persist(); break;
+      case "clear-yes": state = { date: todayKey(), stops: [], settings: { ...S(), odoA:"", odoB:"" } }; persist(); restoreClear(); break;
+      case "clear-no": restoreClear(); break;
+    }
+    render();
+  });
+  function restoreClear(){ $("clearZone").innerHTML = '<button class="btn small danger" id="clearBtn" type="button">Clear the run</button>'; $("clearBtn").onclick = askClear; }
+  function askClear(){ $("clearZone").innerHTML = '<div class="confirm">Remove all '+state.stops.length+' drops?<button class="btn small danger" data-act="clear-yes">Clear run</button><button class="btn small" data-act="clear-no">Keep</button></div>'; }
+  $("clearBtn").onclick = askClear;
+
+  $("mapG").onclick = () => { mapApp = "google"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
+  $("mapA").onclick = () => { mapApp = "apple"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
+
+  $("exampleBtn").onclick = () => {
+    const now = Date.now();
+    const ex = [
+      { drop:1, name:"St Mary's Primary School", address:"Church Lane, Blackburn", postcode:"BB2 6HT", note:"Deliver to school office, not the kitchen door" },
+      { drop:2, name:"Oakwood Print Ltd", address:"Unit 4, Bilton Way, Darwen", postcode:"BB3 0AA", note:"" },
+      { drop:3, name:"Hillside Academy", address:"Moor Road, Accrington", postcode:"BB5 2LB", note:"Avoid 3:00–3:30 pick-up" },
+    ];
+    state.stops = ex.map((x,i) => ({ ...x, id:"ex"+i+now, phone:"", done:false, added:now+i, example:true }));
+    state.date = todayKey(); persist(); render();
+  };
+
+  // ---------- sheet ----------
+  let sheetStop = null, sheetFile = null, sheetExtras = [];
+  function openSheet({ stop=null, file=null, reading=false }){
+    sheetStop = stop; sheetFile = file; editingId = stop && stop.id ? stop.id : null;
+    $("sheetTitle").textContent = editingId ? "Edit drop "+stop.drop : (reading ? "Reading note" : "Check the drop");
+    $("fDrop").value = stop ? (stop.drop ?? "") : freeDrop();
+    $("fName").value = stop?.name || ""; $("fAddr").value = stop?.address || "";
+    $("fPc").value = stop?.postcode || ""; $("fPhone").value = stop?.phone || ""; $("fNote").value = stop?.note || "";
+    const th = $("thumb");
+    if (file){ th.src = URL.createObjectURL(file); th.hidden = false; } else th.hidden = true;
+    $("reading").hidden = !reading; $("formErr").hidden = true;
+    $("saveBtn").textContent = editingId ? "Save changes" : "Add drop";
+    $("saveNextBtn").hidden = !!editingId || !canScan();
+    sheetExtras = editingId ? JSON.parse(JSON.stringify(stop.extra || [])) : [];
+    renderExtras();
+    setBusy(reading); checkDup(); queueHint();
+    $("sheet").hidden = false;
+    if (!reading && !file) setTimeout(() => $(editingId ? "fName" : "fName").focus(), 50);
+  }
+  function closeSheet(){ $("sheet").hidden = true; if ($("thumb").src) try{URL.revokeObjectURL($("thumb").src)}catch{} sheetStop = null; editingId = null; }
+  function setBusy(b){ ["saveBtn","saveNextBtn"].forEach(id => $(id).disabled = b); }
+  function queueHint(){ const h = $("queueHint"); h.hidden = !queue.length; h.textContent = queue.length ? queue.length+" more photo"+(queue.length>1?"s":"")+" waiting after this one" : ""; }
+  function checkDup(){
+    const n = parseInt($("fDrop").value,10), w = $("dupWarn");
+    const clash = state.stops.find(s => s.drop === n && s.id !== editingId);
+    w.hidden = !clash; if (clash) w.textContent = "Drop "+n+" is already "+(clash.name||"used")+". Drop "+freeDrop()+" is free.";
+    checkSame(); checkPc();
+  }
+  $("fDrop").addEventListener("input", checkDup);
+  ["fPc","fName"].forEach(id => $(id).addEventListener("input", checkSame));
+  $("fPc").addEventListener("input", checkPc);
+  function checkPc(){
+    const w = $("pcWarn"), v = $("fPc").value.trim();
+    if (!v || !PCDB){ w.hidden = true; return; }
+    const c = cleanPc(v);
+    if (!locate(c)){ w.hidden = false; w.textContent = "Postcode not found. Check for misread letters and numbers (O and 0, S and 5, B and 8)."; }
+    else if (normPc(v) !== c){ w.hidden = false; w.innerHTML = 'Did you mean <button type="button" class="btn small" data-pc="'+esc(c)+'">'+esc(c)+'</button>?'; }
+    else w.hidden = true;
+  }
+
+  // same place as an existing drop → offer to add this note to it
+  function samePlace(){
+    if (editingId) return null;
+    const pc = normPc($("fPc").value), nm = $("fName").value.trim().toLowerCase();
+    const open = sorted().filter(s => !s.done);
+    return (PC_RE.test(pc) && open.find(s => s.postcode && normPc(s.postcode) === pc))
+      || (nm.length >= 5 && open.find(s => (s.name||"").trim().toLowerCase() === nm)) || null;
+  }
+  function checkSame(){
+    const box = $("mergeBox"), t = samePlace();
+    box.hidden = !t; if (!t) return;
+    const n = noteCount(t);
+    box.innerHTML = '<div><b>Same place as drop '+t.drop+'</b> ('+esc(t.name || t.postcode)+(n > 1 ? ', already '+n+' notes' : '')+'). Add this note to drop '+t.drop+' so it stays one stop?</div>'
+      + '<div class="acts"><button type="button" class="btn small primary" data-merge="'+t.id+'">Add to drop '+t.drop+'</button><span class="hint" style="align-self:center">or Add drop to keep it separate</span></div>';
+  }
+  $("mergeBox").addEventListener("click", e => {
+    const b = e.target.closest("[data-merge]"); if (!b) return;
+    const t = state.stops.find(s => s.id === b.dataset.merge); if (!t) return;
+    const v = readForm(); if (!v) return;
+    t.extra = (t.extra || []).concat([{ name: v.name, address: v.address, postcode: v.postcode, phone: v.phone, note: v.note }]);
+    if (v.note && !t.note) t.note = v.note;
+    persist(); render(); closeSheet();
+    status("Added to drop " + t.drop + " — now " + noteCount(t) + " notes");
+    setTimeout(() => status(""), 4000);
+    nextInQueue();
+  });
+
+  // edit: notes attached to this drop
+  function renderExtras(){
+    const box = $("xBox");
+    box.hidden = !editingId; if (!editingId) return;
+    const n = 1 + sheetExtras.length;
+    box.innerHTML = '<div><b>'+n+' delivery note'+(n>1?'s':'')+'</b> for this drop</div>'
+      + sheetExtras.map((x,i) => '<div class="xrow"><span>Note '+(i+2)+': '+esc(x.name || "same customer")+'</span><button type="button" class="btn small" data-xdel="'+i+'">Remove</button></div>').join("")
+      + '<div class="acts"><button type="button" class="btn small" data-xadd="1">+ Add another note</button></div>';
+  }
+  $("xBox").addEventListener("click", e => {
+    const d = e.target.closest("[data-xdel]"), a = e.target.closest("[data-xadd]");
+    if (d) sheetExtras.splice(Number(d.dataset.xdel), 1);
+    if (a) sheetExtras.push({ name: $("fName").value.trim() });
+    renderExtras();
+  });
+
+  function readForm(){
+    const drop = parseInt($("fDrop").value,10);
+    const s = { drop: Number.isFinite(drop) && drop>0 ? drop : freeDrop(), name: $("fName").value.trim(), address: $("fAddr").value.trim().replace(/\s*\n\s*/g,", "),
+      postcode: cleanPc($("fPc").value.trim() || pcOf({ address: $("fAddr").value })), phone: $("fPhone").value.trim(), note: $("fNote").value.trim() };
+    if (!s.address && !s.postcode){ $("formErr").textContent = "Add an address or postcode so Maps can find the drop."; $("formErr").hidden = false; return null; }
+    return s;
+  }
+  function saveForm(){
+    const v = readForm(); if (!v) return false;
+    if (editingId){ const s = state.stops.find(x=>x.id===editingId); if (s) Object.assign(s, v, { example:false, extra: sheetExtras }); }
+    else state.stops.push({ ...v, id: "d"+Date.now()+Math.random().toString(36).slice(2,6), done:false, added:Date.now() });
+    persist(); render(); return true;
+  }
+  $("form").addEventListener("submit", e => { e.preventDefault(); if (saveForm()){ closeSheet(); nextInQueue(); } });
+  $("saveNextBtn").onclick = () => { if (saveForm()){ closeSheet(); if (queue.length) nextInQueue(); else $("camIn").click(); } };
+  $("cancelBtn").onclick = () => { scanCtl?.abort(); closeSheet(); nextInQueue(); };
+
+  // ---------- scanning ----------
+  const canScan = () => canImages || canOCR();
+  $("scanBtn").onclick = () => canScan() ? $("camIn").click() : openSheet({});
+  $("galleryBtn").onclick = () => $("galIn").click();
+  $("typeBtn").onclick = () => openSheet({});
+  $("camIn").onchange = e => { enqueue(e.target.files); e.target.value = ""; };
+  $("galIn").onchange = e => { enqueue(e.target.files); e.target.value = ""; };
+  function enqueue(files){ const arr = [...(files||[])]; if (!arr.length) return; queue.push(...arr); if ($("sheet").hidden) nextInQueue(); else queueHint(); }
+  function nextInQueue(){ if (!queue.length || !$("sheet").hidden) return; scanFile(queue.shift()); }
+
+  const PROMPT = `This photo shows a UK delivery note carried by a delivery driver. The goods are paper and print media sent by a distributor (its name and letterhead are usually at the top — that is the SENDER, ignore it).
+Read the note and pull out where this drop is going: the "Deliver to" / "Ship to" customer. If there is only an invoice address, use that.
+The driver hand-writes the drop number on each note (a number from 1 upward, often circled or in a corner). Report it if you can see one.
+Reply with only this JSON object:
+{"drop": number or null, "name": "customer or site name", "address": "street lines and town, comma separated, WITHOUT the postcode", "postcode": "UK postcode or empty string", "phone": "contact phone or empty string", "note": "short delivery instruction if written (e.g. opening times, goods-in entrance), else empty string", "readable": true or false}
+Set "readable" to false if this is not a delivery note or the address cannot be read.`;
+
+  // ---------- on-device reading (works without Claude photo access) ----------
+  const canOCR = () => typeof window.Tesseract !== "undefined" && typeof Worker !== "undefined";
+  let ocrWorker = null, ocrReady = null, ocrPct = null, sampleText = true;
+  function getOcr(){
+    if (ocrReady) return ocrReady;
+    const base = new URL("./ocr/", location.href).href;
+    let fail;
+    const failed = new Promise((_, rej) => { fail = rej; });
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 90000));
+    const start = Tesseract.createWorker("eng", 1, {
+      workerPath: base + "worker.min.js", workerBlobURL: false,
+      corePath: base + "core", langPath: base + "lang", gzip: true,
+      errorHandler: e => fail(e instanceof Error ? e : new Error(String(e))),
+      logger: m => { if (ocrPct && typeof m.progress === "number") ocrPct(m); },
+    });
+    ocrReady = Promise.race([start, failed, timeout])
+      .then(w => { ocrWorker = w; return w; })
+      .catch(e => { ocrReady = null; start.then(w => w.terminate()).catch(() => {}); console.error(e); throw e; });
+    return ocrReady;
+  }
+  function prepImage(file){
+    return new Promise((res, rej) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        const max = 2200, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const x = c.getContext("2d", { willReadFrequently: true });
+        x.drawImage(img, 0, 0, c.width, c.height);
+        const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+        for (let i = 0; i < p.length; i += 4){
+          let g = 0.299*p[i] + 0.587*p[i+1] + 0.114*p[i+2];
+          g = Math.max(0, Math.min(255, (g - 128) * 1.35 + 140));
+          p[i] = p[i+1] = p[i+2] = g;
+        }
+        x.putImageData(d, 0, 0); URL.revokeObjectURL(url); res(c);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image")); };
+      img.src = url;
+    });
+  }
+  const SENDER_RE = /its[\s-]?print|its-print\.co\.uk/i;
+  function parseNote(text){
+    const lines = text.split(/\n/).map(l => l.replace(/[|_~]+/g, " ").replace(/\s{2,}/g, " ").trim()).filter(l => l.length > 1);
+    const fixPc = l => l.toUpperCase().replace(/\b([A-Z]{1,2})([0-9O])([A-Z0-9O]?)\s+([0-9O])([A-Z]{2})\b/g, (m,a,b,c,d,e) => a+b.replace("O","0")+c+" "+d.replace("O","0")+e);
+    const pcs = [];
+    lines.forEach((l, i) => { const m = fixPc(l).match(PC_RE); if (m) pcs.push({ i, pc: m[1]+" "+m[2] }); });
+    const okPcs = pcs.filter(p => !lines.slice(Math.max(0,p.i-4), p.i+1).some(l => SENDER_RE.test(l)));
+    const LABEL = /(deliver(y)?\s*(to|address|point)|ship\s*to|consignee|delivered\s*to)\s*:?/ig;
+    let labelIdx = -1; lines.forEach((l, i) => { if (new RegExp(LABEL.source, "i").test(l)) labelIdx = i; });
+    let pick = null, block = [];
+    if (labelIdx >= 0){
+      const after = lines[labelIdx].split(new RegExp(LABEL.source, "i")).pop().replace(/^[\s:]+/, "").trim();
+      const rest = lines.slice(labelIdx + 1, labelIdx + 9);
+      block = (after ? [after] : []).concat(rest);
+      const end = block.findIndex(l => PC_RE.test(l.toUpperCase()));
+      if (end >= 0) block = block.slice(0, end + 1);
+      else block = block.slice(0, 5);
+      pick = okPcs.find(p => p.i > labelIdx) || null;
+    }
+    if (!block.length || !pick){
+      pick = pick || okPcs[0] || pcs[pcs.length - 1] || null;
+      if (pick) block = lines.slice(Math.max(0, pick.i - 4), pick.i + 1);
+    }
+    block = block.map(l => l.replace(new RegExp(LABEL.source, "ig"), "").replace(/^[\s:,-]+/, "").trim())
+      .filter(l => l && !SENDER_RE.test(l) && !/\b(delivery|despatch|dispatch)\s+note\b/i.test(l) && !/^(tel|phone|fax|email|e-mail|www|vat|invoice|order|date|account|a\/c|qty)\b/i.test(l));
+    const phoneM = text.match(/(?:\+44\s?|0)\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}/);
+    const postcode = pick ? pick.pc : "";
+    const clean = block.map(l => { const f = fixPc(l); return f.match(PC_RE) ? f.replace(new RegExp(PC_RE.source, "i"), "").replace(/[,\s]+$/,"").trim() : l; })
+      .map(l => l === l.toUpperCase() && /[A-Z]{3}/.test(l) ? l.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : l).filter(Boolean);
+    return { name: clean[0] || "", address: clean.slice(1).join(", "), postcode, phone: phoneM ? phoneM[0] : "", note: "",
+             postcodes: [...new Set(pcs.map(p => p.pc))], lines };
+  }
+  const TEXT_PROMPT = t => `Below is text read by a phone camera from a UK delivery note (it may have OCR mistakes and columns run together). The sender is the paper distributor Its-Print — ignore its name and address. Find the "Deliver to" / "Ship to" customer; if only an invoice address exists, use that. Fix obvious OCR errors in the postcode (O→0, I→1 in the digit positions).
+Reply with only JSON: {"drop": number or null (a lone handwritten drop number if clearly present, else null), "name": "", "address": "street lines and town, comma separated, without postcode", "postcode": "", "phone": "", "note": "short delivery instruction or empty"}
+
+TEXT:
+${t.slice(0, 6000)}`;
+
+  function showLines(parsed){
+    const box = $("ocrLines");
+    if (!parsed){ box.hidden = true; return; }
+    box.hidden = false;
+    $("pcChips").innerHTML = parsed.postcodes.length > 1
+      ? '<span class="label">Other postcodes on the note:</span> ' + parsed.postcodes.map(p => '<button type="button" class="btn small" data-pc="'+esc(p)+'">'+esc(p)+'</button>').join(" ")
+      : "";
+    $("rawText").textContent = parsed.lines.join("\n");
+  }
+  document.addEventListener("click", e => { const b = e.target.closest("[data-pc]"); if (b){ $("fPc").value = b.dataset.pc; checkPc(); checkSame(); } });
+
+  async function scanOnDevice(file){
+    openSheet({ file, reading:true, stop:{ drop:"" } });
+    $("fDrop").value = "";
+    const rt = $("readingText");
+    rt.textContent = ocrWorker ? "Reading the delivery note…" : "Getting the reader ready (first time takes a little longer)…";
+    ocrPct = m => {
+      if (m.status === "recognizing text") rt.textContent = "Reading the delivery note… " + Math.round(m.progress*100) + "%";
+      else if (!ocrWorker) rt.textContent = "Getting the reader ready… " + ({ "loading tesseract core":"1", "initializing tesseract":"2", "loading language traineddata":"3", "initializing api":"4" }[m.status] || "1") + " of 4";
+    };
+    try {
+      const [w, canvas] = await Promise.all([getOcr(), prepImage(file)]);
+      rt.textContent = "Reading the delivery note…";
+      const { data } = await Promise.race([w.recognize(canvas, {}, { text: true, blocks: false, hocr: false, tsv: false }), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 60000))]);
+      if ($("sheet").hidden) return;
+      const parsed = parseNote(data.text || "");
+      let r = parsed;
+      if (sample && sampleText && (data.text || "").trim().length > 20){
+        rt.textContent = "Picking out the address…";
+        try {
+          const j = await sample.json(TEXT_PROMPT(data.text), { modelTier: "quick" });
+          if (j && (j.address || j.postcode)) r = { ...parsed, ...j, postcode: normPc(j.postcode || parsed.postcode) };
+        } catch (e){ if (["not_granted","sampling_disabled","not_declared","capability_disabled"].includes(e?.code)) sampleText = false; }
+      }
+      if ($("sheet").hidden) return;
+      $("reading").hidden = true; setBusy(false); $("sheetTitle").textContent = "Check the drop";
+      let drop = Number(r.drop); if (!Number.isFinite(drop) || drop < 1 || state.stops.some(s => s.drop === drop)) drop = state.stops.length ? maxDrop()+1 : 1;
+      $("fDrop").value = drop;
+      $("fName").value = r.name || ""; $("fAddr").value = r.address || ""; $("fPc").value = cleanPc(r.postcode || pcOf({ address: r.address }));
+      $("fPhone").value = r.phone || ""; $("fNote").value = r.note || "";
+      $("saveBtn").textContent = "Add as drop " + drop;
+      if (!r.postcode && !r.address){ $("formErr").textContent = "Couldn't find an address on that photo. Type the postcode, or discard and take a closer, flatter photo."; $("formErr").hidden = false; }
+      showLines(parsed); checkDup();
+    } catch (e){
+      $("reading").hidden = true; setBusy(false); $("sheetTitle").textContent = "Type the drop";
+      $("fDrop").value = state.stops.length ? maxDrop()+1 : 1;
+      $("formErr").textContent = (e && e.message === "timeout" ? "The note reader took too long." : "The note reader couldn't start on this phone.") + " Type the postcode for now; a postcode alone is enough for directions."; $("formErr").hidden = false;
+    } finally { ocrPct = null; }
+  }
+
+  async function scanFile(file){
+    showLines(null);
+    if (!(sample && canImages)){
+      if (canOCR()) return scanOnDevice(file);
+      openSheet({ file }); return;
+    }
+    openSheet({ file, reading:true, stop:{ drop:"" } });
+    $("fDrop").value = "";
+    status("Reading delivery note…");
+    scanCtl = new AbortController();
+    try {
+      const r = await sample.json(PROMPT, { images: file, signal: scanCtl.signal });
+      if ($("sheet").hidden) return;
+      $("reading").hidden = true; setBusy(false);
+      $("sheetTitle").textContent = "Check the drop";
+      if (!r || r.readable === false){ $("formErr").textContent = "Couldn't read an address on that photo. Type it in, or discard and take a clearer photo."; $("formErr").hidden = false; }
+      let drop = Number(r?.drop); if (!Number.isFinite(drop) || drop < 1) drop = state.stops.length ? maxDrop()+1 : 1;
+      $("fDrop").value = drop;
+      $("fName").value = r?.name || ""; $("fAddr").value = r?.address || "";
+      $("fPc").value = normPc(r?.postcode); $("fPhone").value = r?.phone || ""; $("fNote").value = r?.note || "";
+      $("saveBtn").textContent = "Add as drop "+drop;
+      checkDup(); status("");
+    } catch (e){
+      if (e?.code === "cancelled") { status(""); return; }
+      $("reading").hidden = true; setBusy(false); $("sheetTitle").textContent = "Type the drop";
+      $("fDrop").value = freeDrop();
+      const msg = {
+        not_granted:"Reading notes needs your OK to use Claude. You can still type the address.",
+        sampling_disabled:"Reading notes isn't available on this account. Type the address instead.",
+        images_unavailable:"Photos can't be read in this app view. Type the address instead.",
+        image_rejected:"That photo couldn't be opened. Try another, or type the address.",
+        rate_limited:"Too many notes read in a row. Wait a minute, or type this one.",
+        invalid_json:"The note was hard to read. Type the address, or retake the photo.",
+        session_expired:"Sign in to Claude again to read notes.",
+      }[e?.code] || "Couldn't read the note just now. Type the address or try the photo again.";
+      $("formErr").textContent = msg; $("formErr").hidden = false;
+      if (["not_granted","sampling_disabled","images_unavailable"].includes(e?.code)) { canImages = false; applyScanMode(); }
+      status("");
+    }
+  }
+  function applyScanMode(){
+    const on = canScan();
+    $("scanBtn").lastChild.textContent = on ? " Scan note" : " Add drop";
+    $("galleryBtn").hidden = !on;
+    $("typeBtn").hidden = !on;
+  }
+
+  // ---------- boot ----------
+  const cached = lsRead(); if (cached) state = cached;
+  render(); applyScanMode();
+
+  if (!canScan()) status("Photo reading isn't available on this phone. Use Add drop to type addresses.");
+  else if (!ocrWorker) status("");
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
