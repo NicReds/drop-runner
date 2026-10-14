@@ -6,11 +6,11 @@ window.FDR_CONFIG = {
   googleKey: "",
 
   // Depot postcode every run starts from (drivers can still change it in Settings).
-  depot: "",
+  depot: "BD4 9SN",
 
   // Where the end-of-day report is emailed (drivers can change it on their phone).
-  email: "",
+  email: "nic@its-print.co.uk",
 
   // Minutes spent at each drop, used for the "with stops" time.
-  stopMins: 10
+  stopMins: 20
 };
