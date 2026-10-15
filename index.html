@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Drop Runner">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icons/favicon-32.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest?v=2">
+<link rel="icon" type="image/png" href="icons/fusion-32.png">
+<link rel="apple-touch-icon" href="icons/fusion-apple-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: one-column cab tool — "next drop" sign up top, numbered run list below, a fixed scan bar at the thumb. */
 :root{
@@ -1164,35 +1164,115 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     });
   }
   const SENDER_RE = /its[\s-]?print|its-print\.co\.uk/i;
+  // Town names -> postcode area, so a misread postcode can be checked against the town written above it.
+  const TOWN_AREA = (() => {
+    const m = {}, add = (a, t) => t.split(",").forEach(x => m[x] = a);
+    add("LS","leeds,morley,pudsey,garforth,wetherby,otley,ilkley,rothwell,tadcaster,guiseley,yeadon,horsforth,kippax,boston spa,burton salmon,sherburn in elmet,micklefield,rawdon,drighlington,gildersome,methley,oulton,woodlesford,swillington,allerton bywater,east ardsley,tingley");
+    add("WF","wakefield,castleford,pontefract,normanton,dewsbury,batley,ossett,featherstone,knottingley,mirfield,hemsworth,south elmsall,south kirkby,horbury,heckmondwike,ackworth,crofton,sharlston,outwood,stanley,altofts,airedale,glasshoughton,ferrybridge,upton,fitzwilliam");
+    add("BD","bradford,keighley,shipley,bingley,cleckheaton,baildon,queensbury,thornton,skipton,settle,silsden,haworth,saltaire,idle,eccleshill,wibsey,tong,birkenshaw,gomersal,liversedge");
+    add("HD","huddersfield,brighouse,holmfirth,elland,marsden,slaithwaite,honley,kirkburton");
+    add("HX","halifax,sowerby bridge,hebden bridge,todmorden,ripponden");
+    add("HG","harrogate,knaresborough,ripon,pateley bridge");
+    add("YO","york,selby,malton,scarborough,whitby,driffield,bridlington,pickering,thirsk,easingwold,pocklington,filey");
+    add("HU","hull,beverley,hessle,cottingham,hornsea,withernsea");
+    add("DN","doncaster,goole,scunthorpe,grimsby,thorne,snaith,howden,retford,gainsborough,cleethorpes,brigg,worksop,bawtry");
+    add("S","sheffield,barnsley,rotherham,chesterfield,penistone,wombwell,maltby,dronfield,stocksbridge");
+    add("M","manchester,salford"); add("OL","oldham,rochdale"); add("BB","blackburn,burnley,accrington,nelson,colne,clitheroe");
+    add("BL","bolton,bury"); add("SK","stockport,macclesfield,glossop"); add("WN","wigan"); add("WA","warrington,widnes");
+    add("PR","preston,chorley"); add("L","liverpool"); add("NE","newcastle,gateshead"); add("DH","durham"); add("DL","darlington,northallerton,richmond,bedale");
+    add("TS","middlesbrough,stockton,hartlepool,redcar"); add("SR","sunderland"); add("NG","nottingham,mansfield,newark"); add("DE","derby");
+    add("LE","leicester"); add("LN","lincoln"); add("B","birmingham"); add("CV","coventry"); add("ST","stoke"); add("CH","chester");
+    add("BS","bristol"); add("CF","cardiff"); add("G","glasgow"); add("EH","edinburgh"); add("PE","peterborough"); add("NR","norwich");
+    add("OX","oxford"); add("CB","cambridge"); add("MK","milton keynes"); add("NN","northampton"); add("LA","lancaster,kendal");
+    return m;
+  })();
+  function townArea(lines){
+    let hit = "";
+    lines.forEach(l => { const low = " " + l.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ") + " ";
+      for (const t in TOWN_AREA) if (low.includes(" " + t + " ")) hit = TOWN_AREA[t]; });
+    return hit;
+  }
+  // OCR look-alikes for postcode characters: ] } and ) for J, $ for S, | and ! for I.
+  const pcChars = l => l.toUpperCase().replace(/[\]\}\)]J|J[\]\}\)]/g, "J").replace(/([A-Z0-9])[\)\]\}]([A-Z0-9])/g, "$1J$2").replace(/[\]\}]/g, "J").replace(/\$/g, "S").replace(/[|!]/g, "I");
+  // Find a postcode in one line even when the camera misread a character or two. Returns { pc, at, len, score } or null.
+  function pcInLine(line, hint){
+    const toks = [], re = /\S+/g; let m; const up = pcChars(line);
+    let wi = 0;
+    while ((m = re.exec(up))) { const t = m[0].replace(/[^A-Z0-9]/g, ""); if (t) toks.push({ t, k: wi }); wi++; }
+    let best = null;
+    const tryRaw = (raw, at, n) => /* at = word number where it starts */ {
+      if (!/\d/.test(raw) || raw.length < 5 || raw.length > 7) return;
+      const exact = (raw.slice(0, -3) + " " + raw.slice(-3)).match(/^([A-Z]{1,2}\d[A-Z\d]?) (\d[A-Z]{2})$/);
+      let cands = pcCandidates(raw);
+      if (exact) cands.unshift(exact[1] + " " + exact[2]);
+      if (hint) cands.forEach(c => { const area = c.match(/^[A-Z]+/)[0]; if (area.length === 1 && hint.length === 2 && hint.endsWith(area)) cands.push(hint[0] + c); });
+      for (const c of new Set(cands)){
+        if (!/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(c)) continue;
+        const [o, i] = c.split(" "), area = o.match(/^[A-Z]+/)[0];
+        const known = PCDB ? (PCDB.s[o + " " + i[0]] ? 3 : PCDB.o[o] ? 1.5 : 0) : 1.5;
+        if (!known && !(exact && c === cands[0])) continue;
+        const sc = known + (exact && c === cands[0] ? 2 : 0) + (hint && area === hint ? 3 : 0) + n * 0.1;
+        if (!best || sc > best.score) best = { pc: c, at, n, score: sc };
+      }
+    };
+    toks.forEach((tk, k) => {
+      tryRaw(tk.t, tk.k, 1);
+      if (toks[k + 1] && tk.t.length >= 2 && tk.t.length <= 4 && toks[k + 1].t.length === 3) tryRaw(tk.t + toks[k + 1].t, tk.k, 2);
+    });
+    return best && best.score >= 3 ? best : null;
+  }
+  const COUNTRY_RE = /^(united\s*kingdom|u\.?k\.?|england|great\s*britain|gb)\.?$/i;
+  const ORG_RE = /\b(school|academy|college|primary|infant|junior|nursery|university|centre|center|hospital|surgery|church|council|library|ltd|limited|plc|trust|group|services|pharmacy|practice|club|hotel)\b/i;
+  const STREET_RE = /^\d|\b(road|rd|street|st|lane|ln|avenue|ave|drive|dr|close|way|place|court|crescent|grove|terrace|hill|gardens|walk|row|square|parade|green|mews|view|rise)\b\.?$/i;
+  // Tidy one OCR'd line: drop symbol-only bits (=, (, —) and stray punctuation on the ends of words.
+  const tidy = l => l.replace(/[|_~«»•*^<>\[\]{}=]+/g, " ").split(/\s+/).map(w => {
+      w = w.replace(/^[^A-Za-z0-9&'£(]+/, "").replace(/[^A-Za-z0-9.&')]+$/, "");
+      if (w.includes("(") && !w.includes(")")) w = w.replace("(", "");
+      if (w.includes(")") && !w.includes("(")) w = w.replace(")", "");
+      return w;
+    }).filter(w => /[A-Za-z0-9]/.test(w)).join(" ")
+    // a lone letter at the end is usually from the next column, unless it's "Unit B", "Block C" and so on
+    .replace(/(\S+) [A-Za-z]$/, (m, prev) => /^(unit|block|flat|building|bldg|suite|plot|gate|door|bay|dock|wing|floor|phase|house|hall|no)$/i.test(prev) ? m : prev).trim();
+  // Text from the column next door or specks read as letters: very short, mostly symbols, or a lone lower-case scrap.
+  const junk = l => { const letters = (l.match(/[A-Za-z]/g) || []).length, digits = (l.match(/\d/g) || []).length;
+    return (letters + digits) < 3 || (letters + digits) / l.replace(/\s/g, "").length < 0.6 || (/^[a-z]+$/.test(l) && l.length <= 5); };
   function parseNote(text){
-    const lines = text.split(/\n/).map(l => l.replace(/[|_~]+/g, " ").replace(/\s{2,}/g, " ").trim()).filter(l => l.length > 1);
-    const fixPc = l => l.toUpperCase().replace(/\b([A-Z]{1,2})([0-9O])([A-Z0-9O]?)\s+([0-9O])([A-Z]{2})\b/g, (m,a,b,c,d,e) => a+b.replace("O","0")+c+" "+d.replace("O","0")+e);
+    const lines = text.split(/\n/).map(l => l.replace(/\s{2,}/g, " ").trim()).filter(l => l.length > 1);
+    const LABEL = /(deliver(y)?\s*(to|address|point)|ship\s*to|consignee|delivered\s*to)\s*:?/i;
+    let labelIdx = -1; lines.forEach((l, i) => { if (LABEL.test(l)) labelIdx = i; });
+    const hint = townArea(labelIdx >= 0 ? lines.slice(labelIdx, labelIdx + 10) : lines);
     const pcs = [];
-    lines.forEach((l, i) => { const m = fixPc(l).match(PC_RE); if (m) pcs.push({ i, pc: m[1]+" "+m[2] }); });
-    const okPcs = pcs.filter(p => !lines.slice(Math.max(0,p.i-4), p.i+1).some(l => SENDER_RE.test(l)));
-    const LABEL = /(deliver(y)?\s*(to|address|point)|ship\s*to|consignee|delivered\s*to)\s*:?/ig;
-    let labelIdx = -1; lines.forEach((l, i) => { if (new RegExp(LABEL.source, "i").test(l)) labelIdx = i; });
+    lines.forEach((l, i) => { const f = pcInLine(l, hint); if (f) pcs.push({ i, ...f }); });
+    const okPcs = pcs.filter(p => !lines.slice(Math.max(0, p.i - 4), p.i + 1).some(l => SENDER_RE.test(l)));
     let pick = null, block = [];
     if (labelIdx >= 0){
-      const after = lines[labelIdx].split(new RegExp(LABEL.source, "i")).pop().replace(/^[\s:]+/, "").trim();
-      const rest = lines.slice(labelIdx + 1, labelIdx + 9);
-      block = (after ? [after] : []).concat(rest);
-      const end = block.findIndex(l => PC_RE.test(l.toUpperCase()));
-      if (end >= 0) block = block.slice(0, end + 1);
-      else block = block.slice(0, 5);
-      pick = okPcs.find(p => p.i > labelIdx) || null;
+      const after = tidy(lines[labelIdx].split(LABEL).pop().replace(/^[\s:]+/, ""));
+      pick = okPcs.find(p => p.i > labelIdx && p.i <= labelIdx + 10) || null;
+      const endI = pick ? pick.i : Math.min(lines.length - 1, labelIdx + 6);
+      block = lines.slice(labelIdx + 1, endI + 1).map((l, k) => ({ l, i: labelIdx + 1 + k }));
+      // keep text after the label only if it reads like a name (starts with a capital or number), not a scrap from the next column
+      if (after && /^[A-Z0-9]/.test(after) && !junk(after) && (after.match(/[A-Za-z]/g) || []).length >= 3) block.unshift({ l: after, i: labelIdx });
     }
     if (!block.length || !pick){
-      pick = pick || okPcs[0] || pcs[pcs.length - 1] || null;
-      if (pick) block = lines.slice(Math.max(0, pick.i - 4), pick.i + 1);
+      pick = pick || okPcs[okPcs.length - 1] || pcs[pcs.length - 1] || null;
+      if (pick && labelIdx < 0) block = lines.slice(Math.max(0, pick.i - 6), pick.i + 1).map((l, k) => ({ l, i: Math.max(0, pick.i - 6) + k }));
     }
-    block = block.map(l => l.replace(new RegExp(LABEL.source, "ig"), "").replace(/^[\s:,-]+/, "").trim())
-      .filter(l => l && !SENDER_RE.test(l) && !/\b(delivery|despatch|dispatch)\s+note\b/i.test(l) && !/^(tel|phone|fax|email|e-mail|www|vat|invoice|order|date|account|a\/c|qty)\b/i.test(l));
+    const out = [];
+    for (const { l, i } of block){
+      let t = l;
+      if (pick && i === pick.i) t = l.split(/\s+/).slice(0, pick.at).join(" ");
+      t = tidy(t.replace(LABEL, ""));
+      if (!t || junk(t) || COUNTRY_RE.test(t) || SENDER_RE.test(t) || /\b(delivery|despatch|dispatch)\s+note\b/i.test(t) || /^(tel|phone|fax|email|e-mail|www|vat|invoice|order|date|account|a\/c|qty)\b/i.test(t)) continue;
+      out.push(t);
+    }
+    const clean = out.map(l => l === l.toUpperCase() && /[A-Z]{3}/.test(l) ? l.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : l)
+      .map(l => l.replace(/^([a-z])/, c => c.toUpperCase()));
+    // a name split over two lines ("Burton Salmon Community" / "Primary School") is joined back up
+    if (clean.length > 2 && !STREET_RE.test(clean[1]) && (ORG_RE.test(clean[1]) || /\b(of|and|&|the|community)$/i.test(clean[0])) && !/^\d/.test(clean[1])){
+      clean.splice(0, 2, clean[0] + " " + clean[1]);
+    }
     const phoneM = text.match(/(?:\+44\s?|0)\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}/);
-    const postcode = pick ? pick.pc : "";
-    const clean = block.map(l => { const f = fixPc(l); return f.match(PC_RE) ? f.replace(new RegExp(PC_RE.source, "i"), "").replace(/[,\s]+$/,"").trim() : l; })
-      .map(l => l === l.toUpperCase() && /[A-Z]{3}/.test(l) ? l.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : l).filter(Boolean);
-    return { name: clean[0] || "", address: clean.slice(1).join(", "), postcode, phone: phoneM ? phoneM[0] : "", note: "",
+    return { name: clean[0] || "", address: clean.slice(1).join(", "), postcode: pick ? pick.pc : "", phone: phoneM ? phoneM[0] : "", note: "",
              postcodes: [...new Set(pcs.map(p => p.pc))], lines };
   }
   const TEXT_PROMPT = t => `Below is text read by a phone camera from a UK delivery note (it may have OCR mistakes and columns run together). The sender is the paper distributor Its-Print — ignore its name and address. Find the "Deliver to" / "Ship to" customer; if only an invoice address exists, use that. Fix obvious OCR errors in the postcode (O→0, I→1 in the digit positions).
