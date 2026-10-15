@@ -644,6 +644,25 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   ["sDepot","sStop","sFactor","sOdoA","sOdoB","sDriver","sVan"].forEach(id => $(id).addEventListener("input", readSettings));
   $("sReturn").addEventListener("change", readSettings);
   setInterval(() => { if (state.startedAt && !state.finishedAt && !$("totals").hidden) renderTotals(); }, 60000);
+  // Change the start and finish times after the day is finished (e.g. Finish was tapped at home, not at base).
+  let timesEdit = false;
+  const hhmm = ms => { const d = new Date(ms); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+  function timesBox(){
+    return '<div class="skipbox"><div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))">'
+      + '<div class="field"><label class="label" for="tStart">Started</label><input id="tStart" type="time" class="num" value="'+(state.startedAt ? hhmm(state.startedAt) : '')+'"></div>'
+      + '<div class="field"><label class="label" for="tEnd">'+(state.returnedAt ? 'Back at base' : 'Finished')+'</label><input id="tEnd" type="time" class="num" value="'+hhmm(state.finishedAt)+'"></div></div>'
+      + '<div id="tErr" class="err" hidden></div>'
+      + '<div class="acts"><button class="btn primary grow" data-act="times-save">Save times</button><button class="btn" data-act="times-cancel">Cancel</button></div></div>';
+  }
+  function saveTimes(){
+    const day = new Date(state.finishedAt), at = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); if (!m) return null; const d = new Date(day); d.setHours(+m[1], +m[2], 0, 0); return d.getTime(); };
+    const st = at($("tStart").value), en = at($("tEnd").value), err = $("tErr");
+    if (en == null){ err.textContent = "Enter the finish time."; err.hidden = false; return false; }
+    if (st != null && st >= en){ err.textContent = "The start time needs to be before the finish time."; err.hidden = false; return false; }
+    if (st != null) state.startedAt = st;
+    state.finishedAt = en; if (state.returnedAt) state.returnedAt = en;
+    timesEdit = false; persist(); return true;
+  }
   function markStart(){ if (!state.startedAt){ state.startedAt = Date.now(); persist(); } }
   const returnsToBase = () => !!(S().back && S().depot);
   function checkFinish(){
@@ -698,7 +717,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         const undone = all.filter(s => !delivered(s)).length;
         nb.innerHTML = '<div class="row"><span class="badge">✓</span><div><div class="eyebrow">Day finished '+clock(state.finishedAt)+(state.returnedAt ? ' · back at base' : '')+'</div><h2>'+(undone ? (all.length-undone)+' of '+all.length+' drops delivered' : 'All '+all.length+' drops delivered')+'</h2>'
           + (state.startedAt ? '<div class="addr">On the road '+fmtT((state.finishedAt - state.startedAt)/60000)+'</div>' : '') + '</div></div>'
-          + '<div class="acts"><button class="btn primary grow" data-act="mail-open">Email report</button><button class="btn ghost-on-sign" data-act="report">PDF</button><button class="btn ghost-on-sign" data-act="csv">CSV</button><button class="btn ghost-on-sign" data-act="reopen">Reopen day</button></div>';
+          + '<div class="acts"><button class="btn primary grow" data-act="mail-open">Email report</button><button class="btn ghost-on-sign" data-act="report">PDF</button><button class="btn ghost-on-sign" data-act="csv">CSV</button><button class="btn ghost-on-sign" data-act="times">Change times</button><button class="btn ghost-on-sign" data-act="reopen">Reopen day</button></div>'
+          + (timesEdit ? timesBox() : '');
       }
     } else nb.hidden = true;
 
@@ -962,7 +982,10 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "base": case "finish": markStart(); state.finishedAt = Date.now(); if (returnsToBase()) state.returnedAt = state.finishedAt; else delete state.returnedAt; finishAsk = false; persist(); break;
       case "finish-ask": { const open = state.stops.filter(x => !x.done).length; if (open) finishAsk = true; else { markStart(); state.finishedAt = Date.now(); if (returnsToBase()) state.returnedAt = state.finishedAt; persist(); } break; }
       case "finish-no": finishAsk = false; break;
-      case "base-undo": case "reopen": delete state.returnedAt; delete state.finishedAt; persist(); break;
+      case "times": timesEdit = !timesEdit; break;
+      case "times-cancel": timesEdit = false; break;
+      case "times-save": if (!saveTimes()) return; break;
+      case "base-undo": case "reopen": timesEdit = false; delete state.returnedAt; delete state.finishedAt; persist(); break;
       case "report": makeReport(); return;
       case "csv": saveCsv(); return;
       case "mail-open": openMail(); return;
