@@ -259,12 +259,21 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 .wkbits b{color:var(--fg)}
 .wknav{display:flex;align-items:center;gap:8px;justify-content:space-between}
 .wknav .btn{min-width:44px;font-size:20px}
+.ver{position:absolute;top:0;right:0;font-family:var(--mono);font-size:11px;color:var(--muted);opacity:.8;letter-spacing:.04em}
+.pos{color:var(--ok);text-shadow:0 0 10px rgba(74,222,128,.45)}
+.neg{color:var(--danger);text-shadow:0 0 10px rgba(255,107,107,.45)}
+.stat b.pos,.stat b.neg{font-family:var(--mono)}
+.offrow{display:grid;grid-template-columns:44px 1fr 1fr;gap:8px;align-items:center}
+.offrow input{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--fg);width:100%;font-size:15px}
+#hrSet summary{cursor:pointer;color:var(--neon);font-size:15px;font-weight:600}
+#hrSet[open]{display:flex;flex-direction:column;gap:8px}
 @media (prefers-reduced-motion:reduce){.next{animation:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
+  <header class="top" style="position:relative">
+    <span class="ver" id="appVer" title="App version">v18</span>
     <div>
       <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
       <h1>Today's run</h1>
@@ -364,7 +373,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     <details class="more" id="mMore"><summary>Or save the files and attach them yourself</summary></details>
     <div id="mSteps" style="display:flex;flex-direction:column;gap:12px">
       <div class="mstep"><span class="badge">1</span><div><button type="button" class="btn" data-act="wk-pdf">Save weekly PDF</button></div></div>
-      <div class="mstep"><span class="badge">2</span><div style="flex-direction:row;flex-wrap:wrap"><button type="button" class="btn" data-act="wk-csv">Save timesheet CSV</button><button type="button" class="btn" data-act="wk-drops">Save drops CSV</button></div></div>
+      <div class="mstep"><span class="badge">2</span><div style="flex-direction:row;flex-wrap:wrap"><button type="button" class="btn" data-act="wk-csv">Save summary CSV</button><button type="button" class="btn" data-act="wk-drops">Save drops CSV</button></div></div>
       <div class="mstep"><span class="badge">3</span><div>
         <span>Open your email app, attach the files from Downloads, and send.</span>
         <div class="copyrow"><span class="hint">To</span><b id="mToTxt">–</b><button type="button" class="btn small" data-act="copy-to">Copy</button></div>
@@ -395,6 +404,26 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   </div>
 </div>
 
+<div class="sheet" id="hoursSheet" hidden>
+  <div class="panel" role="dialog" aria-labelledby="hrTitle">
+    <div class="srow"><h2 style="font-size:24px">My hours</h2><span class="chip ex">Private</span></div>
+    <div class="hint">Your hours stay on this phone and aren't in any report or email.</div>
+    <div class="wknav"><button type="button" class="btn small" data-act="hr-prev" aria-label="Previous week">&lsaquo;</button><h2 id="hrTitle" style="font-size:17px;text-align:center">Week</h2><button type="button" class="btn small" id="hrNext" data-act="hr-next" aria-label="Next week">&rsaquo;</button></div>
+    <div id="hrBal"></div>
+    <ol class="cklist" id="hrDays"></ol>
+    <div id="hrBalBox"></div>
+    <details id="hrSet"><summary>My official hours</summary>
+      <div class="hint">Your contracted start and finish. Leave a day empty if you don't normally work it; any time worked that day counts as extra.</div>
+      <div class="offrow"><span></span><span class="label" style="text-transform:none">Start</span><span class="label" style="text-transform:none">Finish</span></div>
+      <div id="hrOfficial" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="hrPaid">Paid break (mins)</label><input id="hrPaid" inputmode="numeric" class="num"></div><div class="field" style="justify-content:flex-end"><button type="button" class="btn small" data-act="hr-off-copy">Copy Monday to Tue–Fri</button></div></div>
+      <div id="hrOffErr" class="err" hidden></div>
+      <button type="button" class="btn primary" data-act="hr-off-save">Save official hours</button>
+    </details>
+    <button type="button" class="btn" data-act="hours-close">Close</button>
+  </div>
+</div>
+
 <div class="sheet" id="weekSheet" hidden>
   <div class="panel" role="dialog" aria-labelledby="wkTitle">
     <div class="wknav"><button type="button" class="btn small" data-act="wk-prev" aria-label="Previous week">&lsaquo;</button><h2 id="wkTitle" style="font-size:19px;text-align:center">Week</h2><button type="button" class="btn small" id="wkNext" data-act="wk-next" aria-label="Next week">&rsaquo;</button></div>
@@ -402,7 +431,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     <ol class="cklist" id="wkDays"></ol>
     <div class="hint" id="wkWarn" style="color:var(--warn)"></div>
     <button type="button" class="btn primary" data-act="wk-mail">Email weekly report</button>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small grow" data-act="wk-pdf">PDF</button><button type="button" class="btn small grow" data-act="wk-csv">Timesheet CSV</button><button type="button" class="btn small grow" data-act="wk-drops">Drops CSV</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small grow" data-act="wk-pdf">PDF</button><button type="button" class="btn small grow" data-act="wk-csv">Summary CSV</button><button type="button" class="btn small grow" data-act="wk-drops">Drops CSV</button></div>
     <button type="button" class="btn" data-act="week-close">Close</button>
   </div>
 </div>
@@ -759,6 +788,37 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   const workedMins = (sh, live) => !sh || !sh.in ? 0 : Math.max(0, ((sh.out || (live ? Date.now() : sh.in)) - sh.in) / 60000 - breakMins(sh));
   const onBreak = sh => !!(sh && sh.breaks && sh.breaks.length && !sh.breaks[sh.breaks.length - 1].e);
 
+  // ---- my hours (private to the driver: stays on this phone, never in a report) ----
+  const ME_KEY = LS + ".me";
+  let me = {};
+  try { me = JSON.parse(localStorage.getItem(ME_KEY) || "{}") || {}; } catch { me = {}; }
+  me.hours = me.hours || {}; me.marks = me.marks || {}; me.ledger = me.ledger || {};
+  if (me.paidBrk == null) me.paidBrk = 30; if (me.adj == null) me.adj = 0;
+  const saveMe = () => { try { localStorage.setItem(ME_KEY, JSON.stringify(me)); } catch {} };
+  const DOW = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const officialOf = k => { const h = me.hours[dateOf(k).getDay()]; if (!h || !h.s || !h.e) return null; const a = tAt(k, h.s), b = tAt(k, h.e); return a != null && b > a ? { s: a, e: b, mins: (b - a) / 60000 } : null; };
+  const hasOfficial = () => Object.values(me.hours).some(h => h && h.s && h.e);
+  // paid break: breaks up to the allowance count as work; anything over it comes off
+  const paidWorked = (sh, live) => !sh || !sh.in ? 0 : Math.max(0, ((sh.out || (live ? Date.now() : sh.in)) - sh.in) / 60000 - Math.max(0, breakMins(sh) - (Number(me.paidBrk) || 0)));
+  function dayDiff(k, r){
+    const mark = me.marks[k], off = officialOf(k), sh = r && r.shift;
+    if (mark) return { kind: mark, diff: 0, off };
+    if (!sh || !sh.in) return { kind: "none", diff: 0, off };
+    const live = k === todayKey();
+    if (!sh.out) return { kind: live ? "live" : "open", diff: null, worked: paidWorked(sh, live), off };
+    const worked = paidWorked(sh);
+    return { kind: "done", worked, off, diff: !hasOfficial() ? null : worked - (off ? off.mins : 0) };
+  }
+  function syncLedger(){
+    const keys = new Set([...Object.keys(days), state.date]);
+    keys.forEach(k => { if (!k) return; const d = dayDiff(k, dayRec(k));
+      if (d.kind === "done" && d.diff != null) me.ledger[k] = Math.round(d.diff); else delete me.ledger[k]; });
+    saveMe();
+  }
+  const balance = () => Math.round((Number(me.adj) || 0) + Object.values(me.ledger).reduce((n, v) => n + (Number(v) || 0), 0));
+  const sgn = m => (m >= 0 ? "+" : "−") + fmtH(Math.abs(m));
+  const sgnHtml = m => '<span class="'+(m >= 0 ? 'pos' : 'neg')+'">'+sgn(m)+'</span>';
+
   // ---- day history ----
   const SET_KEEP = ["driver","van","depot","back","odoA","odoB","stopMins"];
   function summaryNow(){
@@ -791,12 +851,12 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   function archive(){
     if (!state.date) return;
     if (!(state.stops && state.stops.length) && !state.shift && !state.check && !days[state.date]) return;
-    days[state.date] = liveRec(); saveDays();
+    days[state.date] = liveRec(); saveDays(); syncLedger();
     if (runRef){ try { runRef.collection("days").doc(state.date).set(slim(days[state.date])).catch(() => {}); } catch {} }
   }
   function putDay(k, rec){
     if (k === state.date){ ["shift","check"].forEach(f => { if (f in rec) state[f] = rec[f]; }); persist(); return; }
-    days[k] = { ...(days[k] || { date: k, stops: [], settings: {} }), ...rec, saved: Date.now() }; saveDays();
+    days[k] = { ...(days[k] || { date: k, stops: [], settings: {} }), ...rec, saved: Date.now() }; saveDays(); syncLedger();
     if (runRef){ try { runRef.collection("days").doc(k).set(slim(days[k])).catch(() => {}); } catch {} }
   }
   async function loadDaysDb(){
@@ -822,17 +882,17 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 
   // ---- shift card ----
   let shiftAsk = "", shiftEdit = false;
-  function checkChip(ck){
+  function checkChip(ck, noTime){
     if (!ck || ck.skipped) return '<span class="chip ex">Van check not done</span>';
     const n = Object.values(ck.items || {}).filter(v => v === "defect").length;
-    if (!n) return '<span class="chip ok">Van check OK '+hm(ck.at)+'</span>';
+    if (!n) return '<span class="chip ok">Van check OK'+(noTime ? '' : ' '+hm(ck.at))+'</span>';
     return ck.safe === false ? '<span class="chip fail">'+n+' defect'+(n>1?'s':'')+' · not safe</span>' : '<span class="chip many">'+n+' defect'+(n>1?'s':'')+' reported</span>';
   }
   function shiftEditBox(sh){
     return '<div class="skipbox"><div class="setrow">'
       + '<div class="field"><label class="label" for="seIn">Clocked in</label><input id="seIn" type="time" class="num" value="'+(sh && sh.in ? hm(sh.in) : '')+'"></div>'
       + '<div class="field"><label class="label" for="seOut">Clocked out</label><input id="seOut" type="time" class="num" value="'+(sh && sh.out ? hm(sh.out) : '')+'"></div>'
-      + '<div class="field"><label class="label" for="seBrk">Break mins</label><input id="seBrk" inputmode="numeric" class="num" value="'+Math.round(breakMins(sh))+'"></div></div>'
+      + '<div class="field"><label class="label" for="seBrk">Breaks (mins)</label><input id="seBrk" inputmode="numeric" class="num" value="'+Math.round(breakMins(sh))+'"></div></div>'
       + '<div id="seErr" class="err" hidden></div>'
       + '<div class="acts"><button class="btn primary grow" data-act="shift-edit-save">Save times</button><button class="btn" data-act="shift-edit-cancel">Cancel</button></div></div>';
   }
@@ -845,8 +905,17 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     if (o != null && b >= (o - i) / 60000) return bad("The break is longer than the shift.");
     return { ...(sh || {}), in: i, out: o, brkBase: b, breaks: [] };
   }
+  function officialLine(sh){
+    const off = officialOf(state.date);
+    if (!hasOfficial()) return '<div class="hint">Set your official hours in <button class="linkbtn" data-act="hours-open">My hours</button> to see time in credit or owed.</div>';
+    if (sh.out){ const d = dayDiff(state.date, liveRec()); return '<div class="srow" style="justify-content:flex-start"><span>Today '+sgnHtml(d.diff || 0)+'</span><span class="hint">Balance '+sgnHtml(balance())+'</span></div>'; }
+    if (!off) return '<div class="hint">No official hours today, so it all counts as extra.</div>';
+    const left = off.mins - paidWorked(sh, true);
+    return '<div class="srow" style="justify-content:flex-start"><span class="hint">Official '+hm(off.s)+' – '+hm(off.e)+'</span><span>'+(left > 0 ? '<b class="num">'+fmtH(left)+'</b> to go' : sgnHtml(-left)+' over')+'</span></div>';
+  }
   function renderShift(){
     const box = $("shiftBox"), today = todayKey(), sh = state.shift, cur = state.date === today;
+    const links = '<span style="display:flex;gap:14px"><button class="linkbtn" data-act="hours-open">My hours</button><button class="linkbtn" data-act="week-open">Week report</button></span>';
     let h = "";
     if (!cur && sh && sh.in && !sh.out){
       h = '<div class="eyebrow" style="color:var(--warn)">Not clocked out</div><h2>You didn\'t clock out on '+esc(fmtDay(state.date))+'</h2>'
@@ -854,13 +923,15 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         + '<div class="field" style="justify-content:flex-end"><button class="btn" data-act="shift-fixout">Save</button></div></div><div id="soErr" class="err" hidden></div>'
         + '<div class="acts"><button class="btn primary grow" data-act="clock-in">Clock in for today</button></div>';
     } else if (!cur || !sh || !sh.in){
-      h = '<div class="srow"><div><div class="eyebrow">Shift</div><h2>Not clocked in</h2></div><button class="linkbtn" data-act="week-open">Week report</button></div>'
+      const off = officialOf(today);
+      h = '<div class="srow"><div><div class="eyebrow">Shift</div><h2>Not clocked in</h2></div>'+links+'</div>'
+        + (hasOfficial() ? '<div class="srow" style="justify-content:flex-start"><span class="hint">'+(off ? 'Official '+hm(off.s)+' – '+hm(off.e) : 'No official hours today')+'</span><span class="hint">Balance '+sgnHtml(balance())+'</span></div>' : '')
         + '<div class="acts"><button class="btn primary grow" data-act="clock-in">Clock in</button></div>';
     } else if (!sh.out){
       const br = onBreak(sh);
       h = '<div class="srow"><div><div class="eyebrow">'+(br ? 'On break since '+hm(sh.breaks[sh.breaks.length-1].s) : 'On shift since '+hm(sh.in))+'</div>'
-        + '<div class="big num">'+fmtH(workedMins(sh, true))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'
-        + '<button class="linkbtn" data-act="week-open">Week report</button></div>'
+        + '<div class="big num">'+fmtH(paidWorked(sh, true))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'+links+'</div>'
+        + officialLine(sh)
         + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
         + (shiftAsk === "out"
           ? '<div class="skipbox"><div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="soOdo">Van miles now (optional)</label><input id="soOdo" inputmode="numeric" class="num" placeholder="Odometer" value="'+esc(S().odoB || '')+'"></div><div class="field" style="justify-content:flex-end"><div class="hint">Clocking out at '+hm(Date.now())+'</div></div></div>'
@@ -870,8 +941,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
           : '<div class="acts"><button class="btn grow" data-act="break">'+(br ? 'End break' : 'Start break')+'</button><button class="btn grow" data-act="clock-out">Clock out</button><button class="btn" data-act="shift-edit">Edit</button></div>');
     } else {
       h = '<div class="srow"><div><div class="eyebrow">Shift '+hm(sh.in)+' – '+hm(sh.out)+'</div>'
-        + '<div class="big num">'+fmtH(workedMins(sh))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'
-        + '<button class="linkbtn" data-act="week-open">Week report</button></div>'
+        + '<div class="big num">'+fmtH(paidWorked(sh))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'+links+'</div>'
+        + officialLine(sh)
         + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
         + (shiftEdit ? shiftEditBox(sh) : '<div class="acts"><button class="btn grow" data-act="shift-edit">Change times</button><button class="btn grow" data-act="shift-reopen">Back on shift</button></div>');
     }
@@ -957,15 +1028,14 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     $("checkSheet").hidden = true; persist(); render(); return true;
   }
 
-  // ---- week sheet ----
-  let wkOff = 0, wkEdit = "";
+  // ---- week sheet (goes to the office: drops, miles, van checks; no clock times or hours) ----
+  let wkOff = 0;
   const dayHas = r => r && ((r.stops && r.stops.length) || (r.shift && r.shift.in) || r.check);
   function weekData(off){
     const keys = weekKeys(off);
     const list = keys.map((k, i) => ({ k, i, r: dayRec(k) })).filter(d => d.i < 5 || dayHas(d.r));
-    const tot = { mins: 0, brk: 0, drops: 0, total: 0, failed: 0, miles: 0, milesKnown: true, worked: 0, checks: 0, defects: 0, open: 0, odo: 0 };
-    list.forEach(d => { const r = d.r; if (!r) return; const sh = r.shift;
-      if (sh && sh.in){ tot.worked++; tot.mins += workedMins(sh, d.k === todayKey()); tot.brk += breakMins(sh); if (!sh.out && d.k !== todayKey()) tot.open++; }
+    const tot = { drops: 0, total: 0, failed: 0, miles: 0, milesKnown: true, worked: 0, checks: 0, defects: 0, odo: 0 };
+    list.forEach(d => { const r = d.r; if (!dayHas(r)) return; tot.worked++;
       const s = r.summary || {}; tot.drops += s.delivered || 0; tot.total += s.total || 0; tot.failed += s.failed || 0;
       if ((s.total || 0) > 0){ if (s.miles == null) tot.milesKnown = false; else tot.miles += s.miles; }
       if (r.check && !r.check.skipped){ tot.checks++; tot.defects += Object.values(r.check.items || {}).filter(v => v === "defect").length; }
@@ -974,29 +1044,112 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     return { keys, list, tot, from: keys[0], to: keys[4] };
   }
   function vanMiles(r){ const a = parseFloat(r && r.settings && r.settings.odoA), b = parseFloat(r && r.settings && r.settings.odoB); return Number.isFinite(a) && Number.isFinite(b) && b >= a ? Math.round(b - a) : null; }
+  const weekTitle = W => "Week of " + dateOf(W.from).toLocaleDateString("en-GB", { day:"numeric", month:"short" }) + " – " + dateOf(W.to).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
   function renderWeek(){
     const W = weekData(wkOff), t = W.tot, today = todayKey();
-    $("wkTitle").textContent = "Week of " + dateOf(W.from).toLocaleDateString("en-GB", { day:"numeric", month:"short" }) + " – " + dateOf(W.to).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+    $("wkTitle").textContent = weekTitle(W);
     $("wkNext").disabled = wkOff >= 0;
-    $("wkTotals").innerHTML = '<div class="stat"><b>'+fmtH(t.mins)+'</b><span>worked · '+t.worked+' day'+(t.worked===1?'':'s')+'</span></div>'
-      + '<div class="stat"><b>'+t.drops+'/'+t.total+'</b><span>drops delivered</span></div>'
-      + '<div class="stat"><b>'+(t.total ? fmtMi(t.miles) + (t.milesKnown ? '' : '+') : '0')+'</b><span>miles'+(t.odo ? ' · van '+Math.round(t.odo) : '')+'</span></div>';
+    $("wkTotals").innerHTML = '<div class="stat"><b>'+t.drops+'/'+t.total+'</b><span>drops delivered</span></div>'
+      + '<div class="stat"><b>'+(t.total ? fmtMi(t.miles) + (t.milesKnown ? '' : '+') : '0')+'</b><span>miles'+(t.odo ? ' · van '+Math.round(t.odo) : '')+'</span></div>'
+      + '<div class="stat"><b>'+t.checks+'/'+t.worked+'</b><span>van checks'+(t.defects ? ' · '+t.defects+' defect'+(t.defects>1?'s':'') : '')+'</span></div>';
     $("wkDays").innerHTML = W.list.map(({ k, r }) => {
-      const sh = r && r.shift, s = (r && r.summary) || {}, isToday = k === today, future = k > today;
-      const head = '<div class="wkhead"><b>'+esc(fmtDay(k))+(isToday ? ' · today' : '')+'</b>'
-        + (sh && sh.in ? '<span class="num">'+hm(sh.in)+' – '+(sh.out ? hm(sh.out) : isToday ? 'now' : '<span style="color:var(--warn)">no clock-out</span>')+'</span>' : '<span class="hint">'+(future ? '' : 'Not clocked')+'</span>')+'</div>';
-      if (wkEdit === k) return '<li class="wkday">' + head + shiftEditBox(sh).replace('data-act="shift-edit-save"', 'data-act="wk-edit-save" data-k="'+k+'"').replace('data-act="shift-edit-cancel"', 'data-act="wk-edit-cancel"') + '</li>';
-      const vm = vanMiles(r);
-      const bits = [];
-      if (sh && sh.in) bits.push(sh.out || isToday ? '<b class="num">'+fmtH(workedMins(sh, isToday))+'</b> worked' + (breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '') : '<span style="color:var(--warn)">Hours missing: add the clock-out time</span>');
-      if (s.total) bits.push(s.delivered+'/'+s.total+' drops' + (s.miles != null ? ' · '+fmtMi(s.miles)+' mi' : '') + (vm != null ? ' · van '+vm+' mi' : ''));
-      return '<li class="wkday">' + head + (bits.length ? '<div class="wkbits">'+bits.join('<br>')+'</div>' : '')
-        + '<div class="srow" style="justify-content:flex-start">' + (r && (r.check || (sh && sh.in)) ? checkChip(r.check) : '')
-        + (future ? '' : '<button class="linkbtn" data-act="wk-edit" data-k="'+k+'">'+(sh && sh.in ? 'Edit hours' : 'Add hours')+'</button>') + '</div></li>';
+      const s = (r && r.summary) || {}, isToday = k === today, vm = vanMiles(r);
+      return '<li class="wkday"><div class="wkhead"><b>'+esc(fmtDay(k))+(isToday ? ' · today' : '')+'</b>'+(dayHas(r) ? '' : '<span class="hint">'+(k > today ? '' : 'No run')+'</span>')+'</div>'
+        + (s.total ? '<div class="wkbits">'+s.delivered+'/'+s.total+' drops' + (s.failed ? ' · '+s.failed+' can\'t deliver' : '') + (s.miles != null ? ' · '+fmtMi(s.miles)+' mi' : '') + (vm != null ? ' · van '+vm+' mi' : '')+'</div>' : '')
+        + (dayHas(r) ? '<div class="srow" style="justify-content:flex-start">'+checkChip(r.check, true)+'</div>' : '') + '</li>';
     }).join("");
-    $("wkWarn").textContent = t.open ? "A day has no clock-out time. Tap Edit hours on it to add one before sending." : "";
+    $("wkWarn").textContent = "";
   }
-  function openWeek(){ wkOff = 0; wkEdit = ""; archive(); renderWeek(); $("weekSheet").hidden = false; $("weekSheet").querySelector(".panel").scrollTop = 0; }
+  function openWeek(){ wkOff = 0; archive(); renderWeek(); $("weekSheet").hidden = false; $("weekSheet").querySelector(".panel").scrollTop = 0; }
+
+  // ---- my hours sheet ----
+  let hrOff = 0, hrEdit = "", hrAsk = "";
+  function hoursRows(off){
+    const keys = weekKeys(off), today = todayKey();
+    return keys.map((k, i) => { const r = dayRec(k); return { k, i, r, d: dayDiff(k, r) }; })
+      .filter(x => x.i < 5 || (x.r && x.r.shift && x.r.shift.in) || me.marks[x.k]);
+  }
+  function renderHours(){
+    const rows = hoursRows(hrOff), today = todayKey(), keys = weekKeys(hrOff);
+    $("hrTitle").textContent = weekTitle({ from: keys[0], to: keys[4] });
+    $("hrNext").disabled = hrOff >= 0;
+    const wk = rows.reduce((n, x) => n + (x.d.kind === "done" && x.d.diff != null ? x.d.diff : 0), 0);
+    const worked = rows.reduce((n, x) => n + (x.d.kind === "done" ? x.d.worked : 0), 0);
+    $("hrBal").innerHTML = hasOfficial()
+      ? '<div class="stats"><div class="stat"><b class="'+(balance() >= 0 ? 'pos' : 'neg')+'">'+sgn(balance())+'</b><span>balance</span></div><div class="stat"><b class="'+(wk >= 0 ? 'pos' : 'neg')+'">'+sgn(wk)+'</b><span>this week</span></div><div class="stat"><b>'+fmtH(worked)+'</b><span>worked this week</span></div></div>'
+      : '<div class="merge">Set your official start and finish times below, and the app will show whether you\'re in credit or owe time.</div>';
+    $("hrDays").innerHTML = rows.map(({ k, r, d }) => {
+      const sh = r && r.shift, isToday = k === today, future = k > today, off = d.off;
+      let right = '';
+      if (d.kind === "holiday" || d.kind === "sick") right = '<span class="chip '+(d.kind === "sick" ? 'fail' : 'ok')+'">'+(d.kind === "sick" ? 'Sick' : 'Holiday')+'</span>';
+      else if (d.kind === "done" && d.diff != null) right = '<b class="num">'+sgnHtml(Math.round(d.diff))+'</b>';
+      else if (d.kind === "live") right = '<span class="hint">on shift</span>';
+      else if (d.kind === "open") right = '<span style="color:var(--warn)">no clock-out</span>';
+      const head = '<div class="wkhead"><b>'+esc(fmtDay(k))+(isToday ? ' · today' : '')+'</b>'+right+'</div>';
+      if (hrEdit === k) return '<li class="wkday">'+head+shiftEditBox(sh).replace('data-act="shift-edit-save"', 'data-act="hr-edit-save" data-k="'+k+'"').replace('data-act="shift-edit-cancel"', 'data-act="hr-edit-cancel"')+'</li>';
+      const bits = [];
+      if (sh && sh.in) bits.push('<span class="num">'+hm(sh.in)+' – '+(sh.out ? hm(sh.out) : isToday ? 'now' : '??:??')+'</span>' + (sh.out || isToday ? ' · <b class="num">'+fmtH(paidWorked(sh, isToday))+'</b> worked' : '') + (breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : ''));
+      else if (!future && !me.marks[k]) bits.push('Not clocked');
+      if (off) bits.push('Official '+hm(off.s)+' – '+hm(off.e)+' ('+fmtH(off.mins)+')');
+      const acts = future ? '' : '<button class="linkbtn" data-act="hr-edit" data-k="'+k+'">'+(sh && sh.in ? 'Edit times' : 'Add times')+'</button>'
+        + (me.marks[k] ? '<button class="linkbtn" data-act="hr-mark" data-k="'+k+'" data-v="">Remove '+(me.marks[k] === 'sick' ? 'sick' : 'holiday')+'</button>'
+          : '<button class="linkbtn" data-act="hr-mark" data-k="'+k+'" data-v="holiday">Holiday</button><button class="linkbtn" data-act="hr-mark" data-k="'+k+'" data-v="sick">Sick</button>');
+      return '<li class="wkday">'+head+(bits.length ? '<div class="wkbits">'+bits.join('<br>')+'</div>' : '')+'<div class="srow" style="justify-content:flex-start;gap:14px">'+acts+'</div></li>';
+    }).join("");
+    $("hrBalBox").innerHTML = hrAsk === "clear"
+      ? '<div class="confirm" style="width:100%">Clear your balance to zero?<button class="btn small danger" data-act="hr-clear-yes">Clear</button><button class="btn small" data-act="hr-cancel">Keep</button></div>'
+      : hrAsk === "set"
+      ? '<div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="hrSetIn">Balance (e.g. 2:30 or -1:15)</label><input id="hrSetIn" class="num" inputmode="text" value="'+(balance() < 0 ? '-' : '')+Math.floor(Math.abs(balance())/60)+':'+String(Math.abs(balance())%60).padStart(2,'0')+'"></div><div class="field" style="justify-content:flex-end;flex-direction:row;gap:8px;align-items:flex-end"><button class="btn small" data-act="hr-set-yes">Save</button><button class="btn small" data-act="hr-cancel">Cancel</button></div></div><div id="hrSetErr" class="err" hidden></div>'
+      : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small grow" data-act="hr-set">Set balance</button><button class="btn small grow" data-act="hr-clear">Clear balance</button><button class="btn small grow" data-act="hr-pdf">Save my hours</button></div>';
+  }
+  function fillOfficial(){
+    $("hrOfficial").innerHTML = [1,2,3,4,5,6,0].map(d => { const h = me.hours[d] || {};
+      return '<div class="offrow"><span>'+DOW[d].slice(0,3)+'</span><input type="time" class="num" data-off-s="'+d+'" value="'+(h.s || '')+'" aria-label="'+DOW[d]+' start"><input type="time" class="num" data-off-e="'+d+'" value="'+(h.e || '')+'" aria-label="'+DOW[d]+' finish"></div>'; }).join("");
+    $("hrPaid").value = me.paidBrk;
+  }
+  function saveOfficial(){
+    const hours = {}; let bad = "";
+    [1,2,3,4,5,6,0].forEach(d => { const s = document.querySelector('[data-off-s="'+d+'"]').value, e = document.querySelector('[data-off-e="'+d+'"]').value;
+      if (s && e){ if (e <= s) bad = DOW[d] + ": finish needs to be after start."; else hours[d] = { s, e }; } else if (s || e) bad = DOW[d] + ": enter both start and finish, or leave both empty."; });
+    const pb = parseFloat($("hrPaid").value || "0");
+    if (!Number.isFinite(pb) || pb < 0 || pb > 180) bad = "Paid break should be minutes, e.g. 30.";
+    if (bad){ $("hrOffErr").textContent = bad; $("hrOffErr").hidden = false; return; }
+    $("hrOffErr").hidden = true; me.hours = hours; me.paidBrk = pb; syncLedger(); renderHours(); renderShift();
+    status("Official hours saved."); setTimeout(() => status(""), 3000);
+  }
+  function openHours(){ hrOff = 0; hrEdit = ""; hrAsk = ""; archive(); syncLedger(); fillOfficial(); $("hrSet").open = !hasOfficial(); renderHours(); $("hoursSheet").hidden = false; $("hoursSheet").querySelector(".panel").scrollTop = 0; }
+  function buildHoursPdf(){
+    if (!window.jspdf){ status("The report maker hasn't loaded. Check your signal, then close and reopen the app."); return null; }
+    const { jsPDF } = window.jspdf, doc = new jsPDF({ unit:"mm", format:"a4" }), PW = 210, M = 14, ink = [25,29,35], mute = [110,118,130], rule = [220,224,230], green = [20,140,70], red = [190,40,40];
+    const rows = hoursRows(hrOff), keys = weekKeys(hrOff);
+    doc.setFillColor(...ink); doc.rect(0, 0, PW, 28, "F"); doc.setFillColor(74,163,255); doc.rect(0, 28, PW, 1.2, "F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(74,163,255); doc.text("FUSION DROP RUNNER · PRIVATE", M, 10.5, { charSpace: 0.9 });
+    doc.setTextColor(255,255,255); doc.setFontSize(17); doc.text("My hours", M, 20.5);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(weekTitle({ from: keys[0], to: keys[4] }) + (S().driver ? " · " + S().driver : ""), PW - M, 20.5, { align:"right" });
+    let y = 38;
+    const cols = [["Day",28],["In",18],["Out",18],["Breaks",20],["Worked",22],["Official",34],["+/-",26],["Note",16]];
+    doc.setFillColor(...ink); doc.rect(M, y, PW - 2*M, 7.5, "F"); doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(255,255,255);
+    let x = M + 2; cols.forEach(([c, w]) => { doc.text(c, x, y + 5); x += w; }); y += 7.5;
+    let wk = 0, worked = 0;
+    rows.forEach(({ k, r, d }, ri) => { const sh = r && r.shift, off = d.off;
+      if (d.kind === "done"){ worked += d.worked; if (d.diff != null) wk += d.diff; }
+      const cells = [fmtDay(k), sh && sh.in ? hm(sh.in) : "-", sh && sh.out ? hm(sh.out) : "-", sh && sh.in ? fmtH(breakMins(sh)) : "-", d.kind === "done" ? fmtH(d.worked) : "-",
+        off ? hm(off.s) + "–" + hm(off.e) : "-", d.kind === "done" && d.diff != null ? sgn(Math.round(d.diff)).replace("−", "-") : "-", d.kind === "holiday" ? "Holiday" : d.kind === "sick" ? "Sick" : d.kind === "open" ? "No out" : ""];
+      if (ri % 2){ doc.setFillColor(246,248,251); doc.rect(M, y, PW - 2*M, 7.5, "F"); }
+      x = M + 2; doc.setFontSize(9);
+      cells.forEach((c, i) => { const col = i === 6 && d.kind === "done" && d.diff != null ? (d.diff >= 0 ? green : red) : i === 0 ? [24,112,214] : ink;
+        doc.setFont("helvetica", i === 0 || i === 6 ? "bold" : "normal"); doc.setTextColor(...col); doc.text(String(c), x, y + 5); x += cols[i][1]; });
+      doc.setDrawColor(...rule); doc.line(M, y + 7.5, PW - M, y + 7.5); y += 7.5; });
+    y += 10;
+    const bal = balance();
+    [["Worked this week", fmtH(worked), ink], ["This week", sgn(Math.round(wk)).replace("−", "-"), wk >= 0 ? green : red], ["Balance", sgn(bal).replace("−", "-"), bal >= 0 ? green : red]].forEach(([l, v, c], i) => {
+      const bx = M + i * 62; doc.setDrawColor(...rule); doc.setFillColor(246,248,251); doc.roundedRect(bx, y, 58, 22, 2, 2, "FD");
+      doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...mute); doc.text(l.toUpperCase(), bx + 3, y + 6);
+      doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(...c); doc.text(v, bx + 3, y + 16); });
+    doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...mute);
+    doc.text("Worked = clock-in to clock-out; breaks up to " + me.paidBrk + " minutes are paid, anything over comes off. Made " + new Date().toLocaleString("en-GB", { dateStyle:"short", timeStyle:"short" }) + ".", M, 290);
+    return { blob: doc.output("blob"), name: "My hours " + keys[0] + ".pdf" };
+  }
 
   // ---- weekly files ----
   const wkLabel = W => "w/c " + dateOf(W.from).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
@@ -1023,7 +1176,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       doc.setFont("helvetica","normal"); doc.setTextColor(...mute); doc.text(k, x, y); doc.setFont("helvetica","bold"); doc.setTextColor(...ink); doc.text(String(v), x + 18, y); });
     y += 7;
     const boxes = [
-      ["Hours worked", fmtH(t.mins), t.worked + " day" + (t.worked === 1 ? "" : "s") + (t.brk >= 1 ? ", " + fmtH(t.brk) + " breaks" : "")],
+      ["Days out", String(t.worked), t.worked === 1 ? "day with a run" : "days with a run"],
       ["Drops delivered", t.drops + " of " + t.total, t.failed ? t.failed + " can't deliver" : "all notes accounted for"],
       ["Miles", t.total ? fmtMi(t.miles) + (t.milesKnown ? "" : "+") : "0", t.odo ? "Van odometer: " + Math.round(t.odo) + " mi" : "estimated from postcodes"],
       ["Van checks", t.checks + " of " + t.worked, t.defects ? t.defects + " defect" + (t.defects > 1 ? "s" : "") + " reported" : "no defects"],
@@ -1053,23 +1206,22 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       });
       y += 6;
     };
-    title("Timesheet");
-    const tsRows = W.list.map(({ k, r }) => { const sh = r && r.shift, s = (r && r.summary) || {}, vm = vanMiles(r), ckr = r && r.check;
+    title("Week summary");
+    const tsRows = W.list.map(({ k, r }) => { const s = (r && r.summary) || {}, vm = vanMiles(r), ckr = r && r.check;
       const nDef = ckr && !ckr.skipped ? Object.values(ckr.items || {}).filter(v => v === "defect").length : 0;
-      return [fmtDay(k), sh && sh.in ? hm(sh.in) : "-", sh && sh.out ? hm(sh.out) : (sh && sh.in ? "Not clocked out" : "-"), sh && sh.in ? fmtH(breakMins(sh)) : "-",
-        sh && sh.in ? fmtH(workedMins(sh, k === todayKey())) : "-", s.total ? s.delivered + "/" + s.total : "-", s.total && s.miles != null ? fmtMi(s.miles) : "-", vm != null ? vm : "-",
-        !(sh && sh.in) && !ckr ? "-" : !ckr || ckr.skipped ? "Not done" : nDef ? nDef + " defect" + (nDef > 1 ? "s" : "") + (ckr.safe === false ? ", not safe" : "") : "OK " + hm(ckr.at)]; });
-    tsRows.push(["Total", "", "", fmtH(t.brk), fmtH(t.mins), t.drops + "/" + t.total, t.total ? fmtMi(t.miles) : "-", t.odo ? Math.round(t.odo) : "-", t.checks + " done"]);
-    table([["Day",24],["In",15],["Out",25],["Breaks",17],["Worked",19],["Drops",15],["Miles",16],["Van mi",15],["Van check",36]], tsRows,
-      { totalRow: true, color: (i, txt) => (i === 2 && txt === "Not clocked out") || (i === 8 && /Not done|defect/.test(txt)) ? (/not safe/.test(txt) ? red : warnC) : null });
+      return [fmtDay(k), s.total ? s.delivered + "/" + s.total : "-", s.total ? String(s.failed || 0) : "-", s.total && s.miles != null ? fmtMi(s.miles) : "-", vm != null ? vm : "-",
+        !dayHas(r) ? "-" : !ckr || ckr.skipped ? "Not done" : nDef ? nDef + " defect" + (nDef > 1 ? "s" : "") + (ckr.safe === false ? ", not safe" : "") : "OK"]; });
+    tsRows.push(["Total", t.drops + "/" + t.total, String(t.failed), t.total ? fmtMi(t.miles) : "-", t.odo ? Math.round(t.odo) : "-", t.checks + " done"]);
+    table([["Day",30],["Drops",24],["Can't deliver",28],["Miles",24],["Van miles",24],["Van check",52]], tsRows,
+      { totalRow: true, color: (i, txt) => i === 5 && /Not done|defect/.test(txt) ? (/not safe/.test(txt) ? red : warnC) : null });
     // van checks
     title("Van walkaround checks");
-    W.list.forEach(({ k, r }) => { if (!r || !(r.check || (r.shift && r.shift.in))) return; const c = r.check;
+    W.list.forEach(({ k, r }) => { if (!dayHas(r)) return; const c = r.check;
       need(12); doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...ink); doc.text(longDay(k), M, y + 4);
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
       if (!c || c.skipped){ doc.setTextColor(...warnC); doc.text("Van check not done.", M + 55, y + 4); y += 8; return; }
       const defs = CHECKS.filter(([key]) => c.items && c.items[key] === "defect");
-      doc.setTextColor(...mute); doc.text("Checked " + hm(c.at) + (c.van ? " · " + c.van : "") + (c.odo ? " · odometer " + c.odo : "") + (c.driver ? " · " + c.driver : ""), M + 55, y + 4);
+      doc.setTextColor(...mute); doc.text("Checked" + (c.van ? " · " + c.van : "") + (c.odo ? " · odometer " + c.odo : "") + (c.driver ? " · " + c.driver : ""), M + 55, y + 4);
       y += 7;
       if (!defs.length){ doc.setTextColor(...ink); doc.text("All " + CHECKS.length + " items OK: " + CHECKS.map(x => x[1].toLowerCase().replace("adblue", "AdBlue")).join(", ") + ".", M + 4, y + 2, { maxWidth: PW - 2*M - 8 }); y += 11; return; }
       doc.setFont("helvetica","bold"); doc.setTextColor(...(c.safe === false ? red : warnC)); doc.text(c.safe === false ? "Defects reported. Driver marked the van NOT safe to drive." : "Defects reported. Driver marked the van safe to drive.", M + 4, y + 2); y += 6;
@@ -1082,7 +1234,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         if (ph){ try { doc.addImage(ph.src, "JPEG", PW - M - iw, y, iw, ih); } catch {} }
         y += h; });
       y += 3; });
-    if (!W.list.some(({ r }) => r && (r.check || (r.shift && r.shift.in)))){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...mute); doc.text("No shifts recorded this week.", M, y + 3); y += 9; }
+    if (!W.list.some(({ r }) => dayHas(r))){ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...mute); doc.text("No runs recorded this week.", M, y + 3); y += 9; }
     // drops per day
     W.list.forEach(({ k, r }) => { if (!r || !r.stops || !r.stops.length) return;
       title("Drops · " + longDay(k));
@@ -1096,7 +1248,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     doc.text("Driver signature", M, y + 10); doc.line(M + 30, y + 10, M + 100, y + 10); doc.text("Date", M + 110, y + 10); doc.line(M + 120, y + 10, PW - M, y + 10);
     const pages = doc.getNumberOfPages();
     for (let i = 1; i <= pages; i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...mute);
-      doc.text("Hours are clock-in to clock-out minus breaks. Miles are planned route miles; van miles come from the odometer. Made " + new Date().toLocaleString("en-GB", { dateStyle:"short", timeStyle:"short" }) + ".", M, 290);
+      doc.text("Miles are planned route miles; van miles come from the odometer. Made " + new Date().toLocaleString("en-GB", { dateStyle:"short", timeStyle:"short" }) + ".", M, 290);
       doc.text("Page " + i + " of " + pages, PW - M, 290, { align:"right" }); }
     return { blob: doc.output("blob"), name: wkName(W) + ".pdf" };
   }
@@ -1104,15 +1256,14 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   const csvOut = (rows, name) => { const text = "﻿" + rows.map(r => r.map(csvQ).join(",")).join("\r\n") + "\r\n"; return { blob: new Blob([text], { type: "text/csv" }), name, text }; };
   function buildWeekCsv(){
     const W = weekData(wkOff), t = W.tot;
-    const rows = [["Date","Day","Driver","Van","Clock in","Clock out","Break mins","Hours worked","Hours (decimal)","Drops delivered","Drops total","Can't deliver","Miles","Miles source","Van odometer start","Van odometer end","Van miles","Van check","Defects","Safe to drive"]];
-    W.list.forEach(({ k, r }) => { const sh = r && r.shift, s = (r && r.summary) || {}, set = (r && r.settings) || {}, c = r && r.check, wm = sh && sh.in ? workedMins(sh, k === todayKey()) : 0;
+    const rows = [["Date","Day","Driver","Van","Drops delivered","Drops total","Can't deliver","Miles","Miles source","Van odometer start","Van odometer end","Van miles","Van check","Defects","Safe to drive"]];
+    W.list.forEach(({ k, r }) => { const s = (r && r.summary) || {}, set = (r && r.settings) || {}, c = r && r.check;
       const defs = c && !c.skipped ? CHECKS.filter(([key]) => c.items && c.items[key] === "defect").map(([key, l]) => l + ": " + ((c.notes && c.notes[key]) || "")) : [];
-      rows.push([k, dateOf(k).toLocaleDateString("en-GB", { weekday:"long" }), set.driver || "", set.van || "", sh && sh.in ? hm(sh.in) : "", sh && sh.out ? hm(sh.out) : "",
-        sh && sh.in ? Math.round(breakMins(sh)) : "", sh && sh.in ? fmtH(wm) : "", sh && sh.in ? (wm / 60).toFixed(2) : "", s.total ? s.delivered : "", s.total || "", s.total ? s.failed || 0 : "",
+      rows.push([k, dateOf(k).toLocaleDateString("en-GB", { weekday:"long" }), set.driver || "", set.van || "", s.total ? s.delivered : "", s.total || "", s.total ? s.failed || 0 : "",
         s.total && s.miles != null ? (Math.round(s.miles * 10) / 10).toFixed(1) : "", s.total ? (s.src === "google" ? "Google" : "Estimate") : "", set.odoA || "", set.odoB || "", vanMiles(r) ?? "",
-        !c ? (sh && sh.in ? "Not done" : "") : c.skipped ? "Not done" : defs.length ? "Defects" : "OK", defs.join("; "), c && !c.skipped ? (c.safe === false ? "No" : "Yes") : ""]); });
-    rows.push(["Total","","","","","",Math.round(t.brk),fmtH(t.mins),(t.mins/60).toFixed(2),t.drops,t.total,t.failed,t.total ? (Math.round(t.miles*10)/10).toFixed(1) : "","","","",t.odo ? Math.round(t.odo) : "",t.checks + " done",t.defects || "",""]);
-    return csvOut(rows, wkName(W) + " timesheet.csv");
+        !dayHas(r) ? "" : !c || c.skipped ? "Not done" : defs.length ? "Defects" : "OK", defs.join("; "), c && !c.skipped ? (c.safe === false ? "No" : "Yes") : ""]); });
+    rows.push(["Total","","","",t.drops,t.total,t.failed,t.total ? (Math.round(t.miles*10)/10).toFixed(1) : "","","","",t.odo ? Math.round(t.odo) : "",t.checks + " done",t.defects || "",""]);
+    return csvOut(rows, wkName(W) + " summary.csv");
   }
   function buildWeekDropsCsv(){
     const W = weekData(wkOff);
@@ -1126,15 +1277,14 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   function mailSubject(){ const W = weekData(wkOff), d = weekSetting(W, "driver"), v = weekSetting(W, "van"); return "Weekly report " + wkLabel(W) + (d ? " · " + d : "") + (v ? " (" + v + ")" : ""); }
   function mailBody(){
     const W = weekData(wkOff), t = W.tot, lines = [mailSubject(), ""];
-    W.list.forEach(({ k, r }) => { const sh = r && r.shift, s = (r && r.summary) || {}, c = r && r.check;
+    W.list.forEach(({ k, r }) => { const s = (r && r.summary) || {}, c = r && r.check;
       const parts = [fmtDay(k).padEnd(11)];
-      parts.push(sh && sh.in ? hm(sh.in) + "–" + (sh.out ? hm(sh.out) : "??:??") + "  " + fmtH(workedMins(sh, k === todayKey())) : "not worked");
+      if (!dayHas(r)) parts.push("no run");
       if (s.total) parts.push(s.delivered + "/" + s.total + " drops" + (s.miles != null ? ", " + fmtMi(s.miles) + " mi" : ""));
-      if (sh && sh.in) parts.push(!c || c.skipped ? "check not done" : Object.values(c.items || {}).includes("defect") ? "check: defects" : "check OK");
+      if (dayHas(r)) parts.push(!c || c.skipped ? "van check not done" : Object.values(c.items || {}).includes("defect") ? "van check: defects" : "van check OK");
       lines.push(parts.join("  ")); });
-    lines.push("", "Total: " + fmtH(t.mins) + " worked over " + t.worked + " day" + (t.worked === 1 ? "" : "s") + ", " + t.drops + " of " + t.total + " drops delivered" + (t.total ? ", " + fmtMi(t.miles) + " miles" : "") + ".");
+    lines.push("", "Total: " + t.drops + " of " + t.total + " drops delivered" + (t.total ? ", " + fmtMi(t.miles) + " miles" : "") + (t.odo ? " (van " + Math.round(t.odo) + " mi)" : "") + ".");
     if (t.defects) lines.push("Van defects reported: " + t.defects + " (details in the PDF).");
-    if (t.open) lines.push("Note: a day has no clock-out time.");
     lines.push("", "Weekly PDF report and spreadsheets attached.");
     return lines.join("\n");
   }
@@ -1186,16 +1336,32 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "ck-skip": if (!state.check) state.check = { skipped: true, at: Date.now() }; $("checkSheet").hidden = true; persist(); render(); return after();
       case "week-open": openWeek(); return after();
       case "week-close": $("weekSheet").hidden = true; return after();
-      case "wk-prev": wkOff--; wkEdit = ""; renderWeek(); return after();
-      case "wk-next": if (wkOff < 0) wkOff++; wkEdit = ""; renderWeek(); return after();
-      case "wk-edit": wkEdit = k; renderWeek(); return after();
-      case "wk-edit-cancel": wkEdit = ""; renderWeek(); return after();
-      case "wk-edit-save": { const r = dayRec(k), sh = readShiftEdit(k, r && r.shift); if (!sh) return after(); if (sh.out == null) delete sh.out;
+      case "wk-prev": wkOff--; renderWeek(); return after();
+      case "wk-next": if (wkOff < 0) wkOff++; renderWeek(); return after();
+      case "hours-open": openHours(); return after();
+      case "hours-close": $("hoursSheet").hidden = true; render(); return after();
+      case "hr-prev": hrOff--; hrEdit = ""; renderHours(); return after();
+      case "hr-next": if (hrOff < 0) hrOff++; hrEdit = ""; renderHours(); return after();
+      case "hr-edit": hrEdit = k; renderHours(); return after();
+      case "hr-edit-cancel": hrEdit = ""; renderHours(); return after();
+      case "hr-edit-save": { const r = dayRec(k), sh = readShiftEdit(k, r && r.shift); if (!sh) return after(); if (sh.out == null) delete sh.out;
         putDay(k, { shift: sh, settings: (r && r.settings && Object.keys(r.settings).length) ? r.settings : (() => { const o = {}; SET_KEEP.forEach(f => o[f] = f.startsWith("odo") ? "" : S()[f]); return o; })() });
-        wkEdit = ""; renderWeek(); render(); return after(); }
+        syncLedger(); hrEdit = ""; renderHours(); render(); return after(); }
+      case "hr-mark": if (t.dataset.v) me.marks[k] = t.dataset.v; else delete me.marks[k]; syncLedger(); renderHours(); return after();
+      case "hr-set": hrAsk = "set"; renderHours(); return after();
+      case "hr-clear": hrAsk = "clear"; renderHours(); return after();
+      case "hr-cancel": hrAsk = ""; renderHours(); return after();
+      case "hr-clear-yes": me.adj = -Object.values(me.ledger).reduce((n, v) => n + (Number(v) || 0), 0); saveMe(); hrAsk = ""; renderHours(); renderShift(); return after();
+      case "hr-set-yes": { const m = /^\s*([+\-−]?)\s*(\d{1,4})(?::(\d{1,2}))?\s*$/.exec($("hrSetIn").value || "");
+        if (!m || (m[3] && +m[3] > 59)){ $("hrSetErr").textContent = "Enter hours and minutes, like 2:30, or -1:15 if you owe time."; $("hrSetErr").hidden = false; return after(); }
+        const v = ((+m[2]) * 60 + (+(m[3] || 0))) * (m[1] && m[1] !== "+" ? -1 : 1);
+        me.adj = v - Object.values(me.ledger).reduce((n, x) => n + (Number(x) || 0), 0); saveMe(); hrAsk = ""; renderHours(); renderShift(); return after(); }
+      case "hr-off-copy": { const s = document.querySelector('[data-off-s="1"]').value, e = document.querySelector('[data-off-e="1"]').value; [2,3,4,5].forEach(d => { document.querySelector('[data-off-s="'+d+'"]').value = s; document.querySelector('[data-off-e="'+d+'"]').value = e; }); return after(); }
+      case "hr-off-save": saveOfficial(); return after();
+      case "hr-pdf": { const r = buildHoursPdf(); if (r){ if (IS_ART) saveBlobFile(r.blob, r.name, "Your hours saved to your downloads."); else deliverPdf(r.blob, r.name); } return after(); }
       case "wk-mail": $("weekSheet").hidden = true; openMail(); return after();
       case "wk-pdf": { const r = buildWeekPdf(); if (r){ if (IS_ART) saveBlobFile(r.blob, r.name, "Weekly PDF saved to your downloads."); else deliverPdf(r.blob, r.name); } return after(); }
-      case "wk-csv": { const c = buildWeekCsv(); saveBlobFile(c.blob, c.name, "Timesheet spreadsheet saved."); return after(); }
+      case "wk-csv": { const c = buildWeekCsv(); saveBlobFile(c.blob, c.name, "Summary spreadsheet saved."); return after(); }
       case "wk-drops": { const c = buildWeekDropsCsv(); saveBlobFile(c.blob, c.name, "Drops spreadsheet saved."); return after(); }
     }
   }, true);
