@@ -273,7 +273,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 <body>
 <div class="wrap">
   <header class="top" style="position:relative">
-    <span class="ver" id="appVer" title="App version">v18</span>
+    <span class="ver" id="appVer" title="App version">v19</span>
     <div>
       <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
       <h1>Today's run</h1>
@@ -854,6 +854,21 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     days[state.date] = liveRec(); saveDays(); syncLedger();
     if (runRef){ try { runRef.collection("days").doc(state.date).set(slim(days[state.date])).catch(() => {}); } catch {} }
   }
+  // Remove a day's clock times (e.g. a test clock-in). A finished van check is a safety record and stays;
+  // one that was skipped goes with the shift. Drops are untouched.
+  function deleteShift(k){
+    if (k === state.date){
+      delete state.shift; if (state.check && state.check.skipped) delete state.check;
+      shiftAsk = ""; shiftEdit = false; persist();
+    } else if (days[k]){
+      const r = days[k]; delete r.shift; if (r.check && r.check.skipped) delete r.check; r.saved = Date.now();
+      const empty = !(r.stops && r.stops.length) && !r.check;
+      if (empty) delete days[k];
+      saveDays();
+      if (runRef){ try { const ref = runRef.collection("days").doc(k); (empty ? ref.delete() : ref.set(slim(r))).catch(() => {}); } catch {} }
+    }
+    delete me.ledger[k]; syncLedger();
+  }
   function putDay(k, rec){
     if (k === state.date){ ["shift","check"].forEach(f => { if (f in rec) state[f] = rec[f]; }); persist(); return; }
     days[k] = { ...(days[k] || { date: k, stops: [], settings: {} }), ...rec, saved: Date.now() }; saveDays(); syncLedger();
@@ -894,7 +909,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       + '<div class="field"><label class="label" for="seOut">Clocked out</label><input id="seOut" type="time" class="num" value="'+(sh && sh.out ? hm(sh.out) : '')+'"></div>'
       + '<div class="field"><label class="label" for="seBrk">Breaks (mins)</label><input id="seBrk" inputmode="numeric" class="num" value="'+Math.round(breakMins(sh))+'"></div></div>'
       + '<div id="seErr" class="err" hidden></div>'
-      + '<div class="acts"><button class="btn primary grow" data-act="shift-edit-save">Save times</button><button class="btn" data-act="shift-edit-cancel">Cancel</button></div></div>';
+      + '<div class="acts"><button class="btn primary grow" data-act="shift-edit-save">Save times</button><button class="btn" data-act="shift-edit-cancel">Cancel</button></div>'
+      + (sh && sh.in ? '<button class="linkbtn" style="align-self:flex-start;color:var(--danger)" data-act="shift-del-ask">Delete this shift</button>' : '') + '</div>';
   }
   function readShiftEdit(k, sh){
     const i = tAt(k, $("seIn").value), o = tAt(k, $("seOut").value), b = parseFloat($("seBrk").value || "0"), err = $("seErr");
@@ -905,6 +921,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     if (o != null && b >= (o - i) / 60000) return bad("The break is longer than the shift.");
     return { ...(sh || {}), in: i, out: o, brkBase: b, breaks: [] };
   }
+  const delBox = k => '<div class="confirm" style="width:100%">Delete the clock times for '+esc(fmtDay(k))+'? Drops'+(k === state.date && state.check && !state.check.skipped ? ' and the van check' : '')+' stay.<button class="btn small danger" data-act="shift-del-yes" data-k="'+k+'">Delete</button><button class="btn small" data-act="shift-del-no" data-k="'+k+'">Keep</button></div>';
   function officialLine(sh){
     const off = officialOf(state.date);
     if (!hasOfficial()) return '<div class="hint">Set your official hours in <button class="linkbtn" data-act="hours-open">My hours</button> to see time in credit or owed.</div>';
@@ -937,6 +954,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
           ? '<div class="skipbox"><div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="soOdo">Van miles now (optional)</label><input id="soOdo" inputmode="numeric" class="num" placeholder="Odometer" value="'+esc(S().odoB || '')+'"></div><div class="field" style="justify-content:flex-end"><div class="hint">Clocking out at '+hm(Date.now())+'</div></div></div>'
             + ((state.stops||[]).some(s => !s.done) ? '<div class="hint" style="color:var(--warn)">Some drops aren\'t marked delivered yet.</div>' : '')
             + '<div class="acts"><button class="btn primary grow" data-act="clock-out-yes">Clock out</button><button class="btn" data-act="clock-out-no">Cancel</button></div></div>'
+          : shiftAsk === "del" ? delBox(state.date)
           : shiftEdit ? shiftEditBox(sh)
           : '<div class="acts"><button class="btn grow" data-act="break">'+(br ? 'End break' : 'Start break')+'</button><button class="btn grow" data-act="clock-out">Clock out</button><button class="btn" data-act="shift-edit">Edit</button></div>');
     } else {
@@ -944,7 +962,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         + '<div class="big num">'+fmtH(paidWorked(sh))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'+links+'</div>'
         + officialLine(sh)
         + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
-        + (shiftEdit ? shiftEditBox(sh) : '<div class="acts"><button class="btn grow" data-act="shift-edit">Change times</button><button class="btn grow" data-act="shift-reopen">Back on shift</button></div>');
+        + (shiftAsk === "del" ? delBox(state.date) : shiftEdit ? shiftEditBox(sh) : '<div class="acts"><button class="btn grow" data-act="shift-edit">Change times</button><button class="btn grow" data-act="shift-reopen">Back on shift</button></div>');
     }
     box.innerHTML = h; box.hidden = false;
   }
@@ -1094,7 +1112,9 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       const acts = future ? '' : '<button class="linkbtn" data-act="hr-edit" data-k="'+k+'">'+(sh && sh.in ? 'Edit times' : 'Add times')+'</button>'
         + (me.marks[k] ? '<button class="linkbtn" data-act="hr-mark" data-k="'+k+'" data-v="">Remove '+(me.marks[k] === 'sick' ? 'sick' : 'holiday')+'</button>'
           : '<button class="linkbtn" data-act="hr-mark" data-k="'+k+'" data-v="holiday">Holiday</button><button class="linkbtn" data-act="hr-mark" data-k="'+k+'" data-v="sick">Sick</button>');
-      return '<li class="wkday">'+head+(bits.length ? '<div class="wkbits">'+bits.join('<br>')+'</div>' : '')+'<div class="srow" style="justify-content:flex-start;gap:14px">'+acts+'</div></li>';
+      const del = sh && sh.in ? '<button class="linkbtn" style="color:var(--danger)" data-act="hr-del" data-k="'+k+'">Delete</button>' : '';
+      return '<li class="wkday">'+head+(bits.length ? '<div class="wkbits">'+bits.join('<br>')+'</div>' : '')
+        + (hrAsk === "del:" + k ? delBox(k) : '<div class="srow" style="justify-content:flex-start;gap:14px">'+acts+del+'</div>')+'</li>';
     }).join("");
     $("hrBalBox").innerHTML = hrAsk === "clear"
       ? '<div class="confirm" style="width:100%">Clear your balance to zero?<button class="btn small danger" data-act="hr-clear-yes">Clear</button><button class="btn small" data-act="hr-cancel">Keep</button></div>'
@@ -1326,6 +1346,10 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         if (o == null){ err.textContent = "Enter the time you finished."; err.hidden = false; return after(); }
         if (o <= sh.in){ err.textContent = "That's before you clocked in (" + hm(sh.in) + ")."; err.hidden = false; return after(); }
         if (onBreak(sh)) sh.breaks[sh.breaks.length - 1].e = o; sh.out = o; persist(); render(); return after(); }
+      case "shift-del-ask": shiftEdit = false; shiftAsk = "del"; renderShift(); return after();
+      case "hr-del": hrAsk = "del:" + k; renderHours(); return after();
+      case "shift-del-no": shiftAsk = ""; if (hrAsk.startsWith("del:")) hrAsk = ""; renderShift(); if (!$("hoursSheet").hidden) renderHours(); return after();
+      case "shift-del-yes": deleteShift(k); shiftAsk = ""; hrAsk = ""; render(); if (!$("hoursSheet").hidden) renderHours(); status("Clock times deleted."); setTimeout(() => status(""), 3000); return after();
       case "check-open": openCheck(); return after();
       case "ck-set": ck.items[k] = t.dataset.v; if (t.dataset.v === "ok" && !CHECKS.some(([x]) => ck.items[x] === "defect")) ck.safe = null; renderCheck(); return after();
       case "ck-allok": CHECKS.forEach(([x]) => { if (!ck.items[x]) ck.items[x] = "ok"; }); renderCheck(); return after();

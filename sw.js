@@ -1,6 +1,6 @@
 // Keeps Fusion Drop Runner working with a poor signal: app files come from the phone,
 // and the page itself is refreshed from the web whenever there is a connection.
-const VERSION = "fdr-v18";
+const VERSION = "fdr-v19";
 const CORE = ["./", "index.html", "config.js", "manifest.webmanifest", "ukpc.json", "tesseract.min.js",
   "jspdf.umd.min.js", "icons/fusion-192.png", "icons/fusion-512.png", "icons/fusion-apple-180.png"];
 const HEAVY = ["ocr/worker.min.js", "ocr/core/tesseract-core-simd-lstm.wasm.js", "ocr/core/tesseract-core-lstm.wasm.js", "ocr/lang/eng-data.wasm"];
