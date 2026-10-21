@@ -273,7 +273,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 <body>
 <div class="wrap">
   <header class="top" style="position:relative">
-    <span class="ver" id="appVer" title="App version">v19</span>
+    <span class="ver" id="appVer" title="App version">v21</span>
     <div>
       <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
       <h1>Today's run</h1>
@@ -532,18 +532,18 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   // ---------- distances & times ----------
   let PCDB = null;
   // Postcode clean-up: fixes common misreads (O/0, S/5, B/8, I/1, Z/2, G/6) and checks the result against the postcode table.
-  const AMB_D = { O:"0", Q:"0", D:"0", I:"1", L:"1", S:"5", B:"8", Z:"2", G:"6", T:"7" };
+  const AMB_D = { O:"0", Q:"0", D:"0", I:"1", L:"1", S:"58", B:"8", Z:"2", G:"6", T:"7" };
   const AMB_L = { "0":"O", "1":"I", "5":"S", "8":"B", "2":"Z", "6":"G", "7":"T" };
   function pcCandidates(raw){
     const c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (c.length < 5 || c.length > 7) return [];
     const out = c.slice(0, -3), inw = c.slice(-3);
-    const d = /\d/.test(inw[0]) ? inw[0] : AMB_D[inw[0]];
+    const ds = /\d/.test(inw[0]) ? [inw[0]] : (AMB_D[inw[0]] || "").split("").filter(Boolean);
     const ls = [...inw.slice(1)].map(ch => /[A-Z]/.test(ch) ? ch : AMB_L[ch]);
-    if (!d || ls.some(x => !x)) return [];
+    if (!ds.length || ls.some(x => !x)) return [];
     let combos = [""];
-    for (const ch of out){ const o = new Set([ch]); if (AMB_D[ch]) o.add(AMB_D[ch]); if (AMB_L[ch]) o.add(AMB_L[ch]); combos = combos.flatMap(pre => [...o].map(x => pre + x)); }
-    return combos.filter(o => /^[A-Z]{1,2}\d[A-Z\d]?$/.test(o)).map(o => o + " " + d + ls.join(""));
+    for (const ch of out){ const o = new Set([ch]); if (AMB_D[ch]) AMB_D[ch].split("").forEach(x => o.add(x)); if (AMB_L[ch]) o.add(AMB_L[ch]); combos = combos.flatMap(pre => [...o].map(x => pre + x)); }
+    return combos.filter(o => /^[A-Z]{1,2}\d[A-Z\d]?$/.test(o)).flatMap(o => ds.map(d => o + " " + d + ls.join("")));
   }
   function cleanPc(raw){
     const typed = normPc(raw), cands = pcCandidates(raw);
@@ -951,7 +951,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         + officialLine(sh)
         + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
         + (shiftAsk === "out"
-          ? '<div class="skipbox"><div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="soOdo">Van miles now (optional)</label><input id="soOdo" inputmode="numeric" class="num" placeholder="Odometer" value="'+esc(S().odoB || '')+'"></div><div class="field" style="justify-content:flex-end"><div class="hint">Clocking out at '+hm(Date.now())+'</div></div></div>'
+          ? '<div class="skipbox"><div class="hint">Clocking out at '+hm(Date.now())+'</div>'
             + ((state.stops||[]).some(s => !s.done) ? '<div class="hint" style="color:var(--warn)">Some drops aren\'t marked delivered yet.</div>' : '')
             + '<div class="acts"><button class="btn primary grow" data-act="clock-out-yes">Clock out</button><button class="btn" data-act="clock-out-no">Cancel</button></div></div>'
           : shiftAsk === "del" ? delBox(state.date)
@@ -1336,7 +1336,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "clock-out": shiftAsk = "out"; renderShift(); return after();
       case "clock-out-no": shiftAsk = ""; renderShift(); return after();
       case "clock-out-yes": { const sh = state.shift; if (!sh) return after(); const now = Date.now(); if (onBreak(sh)) sh.breaks[sh.breaks.length - 1].e = now; sh.out = now;
-        const odo = ($("soOdo") && $("soOdo").value.trim()) || ""; if (odo) S().odoB = odo; shiftAsk = ""; persist(); render(); return after(); }
+        shiftAsk = ""; persist(); render(); return after(); }
       case "shift-reopen": if (state.shift){ delete state.shift.out; persist(); renderShift(); } return after();
       case "shift-edit": shiftEdit = true; renderShift(); return after();
       case "shift-edit-cancel": shiftEdit = false; renderShift(); return after();
@@ -1350,6 +1350,10 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "hr-del": hrAsk = "del:" + k; renderHours(); return after();
       case "shift-del-no": shiftAsk = ""; if (hrAsk.startsWith("del:")) hrAsk = ""; renderShift(); if (!$("hoursSheet").hidden) renderHours(); return after();
       case "shift-del-yes": deleteShift(k); shiftAsk = ""; hrAsk = ""; render(); if (!$("hoursSheet").hidden) renderHours(); status("Clock times deleted."); setTimeout(() => status(""), 3000); return after();
+      case "odo-end": { const v = ($("fOdoB").value || "").replace(/[^\d]/g, ""), a = parseFloat(S().odoA), err = $("odoErr");
+        if (!v){ err.textContent = "Enter the mileage shown on the van."; err.hidden = false; return after(); }
+        if (Number.isFinite(a) && +v < a){ err.textContent = "That's less than the start mileage (" + a + ")."; err.hidden = false; return after(); }
+        S().odoB = v; persist(); render(); status("End mileage saved."); setTimeout(() => status(""), 3000); return after(); }
       case "check-open": openCheck(); return after();
       case "ck-set": ck.items[k] = t.dataset.v; if (t.dataset.v === "ok" && !CHECKS.some(([x]) => ck.items[x] === "defect")) ck.safe = null; renderCheck(); return after();
       case "ck-allok": CHECKS.forEach(([x]) => { if (!ck.items[x]) ck.items[x] = "ok"; }); renderCheck(); return after();
@@ -1435,7 +1439,9 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         nb.innerHTML = '<div class="row"><span class="badge">✓</span><div><div class="eyebrow">Day finished '+clock(state.finishedAt)+(state.returnedAt ? ' · back at base' : '')+'</div><h2>'+(undone ? (all.length-undone)+' of '+all.length+' drops delivered' : 'All '+all.length+' drops delivered')+'</h2>'
           + (state.startedAt ? '<div class="addr">On the road '+fmtT((state.finishedAt - state.startedAt)/60000)+'</div>' : '') + '</div></div>'
           + '<div class="acts"><button class="btn primary grow" data-act="week-open">Week report</button><button class="btn ghost-on-sign" data-act="report">PDF</button><button class="btn ghost-on-sign" data-act="csv">CSV</button><button class="btn ghost-on-sign" data-act="times">Change times</button><button class="btn ghost-on-sign" data-act="reopen">Reopen day</button></div>'
-          + (timesEdit ? timesBox() : '');
+          + (timesEdit ? timesBox() : '')
+          + (!S().odoB ? '<div class="skipbox"><div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="fOdoB">Van mileage now (optional)</label><input id="fOdoB" inputmode="numeric" class="num" placeholder="Odometer"></div><div class="field" style="justify-content:flex-end"><button class="btn" data-act="odo-end">Save</button></div></div>'
+            + (S().odoA ? '<div class="hint">Start mileage '+esc(S().odoA)+'</div>' : '') + '<div id="odoErr" class="err" hidden></div></div>' : '');
       }
     } else nb.hidden = true;
 
@@ -1879,7 +1885,47 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     const r = document.createElement("canvas"); r.width = c.height; r.height = c.width;
     const x = r.getContext("2d");
     if (dir > 0){ x.translate(r.width, 0); x.rotate(Math.PI / 2); } else { x.translate(0, r.height); x.rotate(-Math.PI / 2); }
-    x.drawImage(c, 0, 0); return r;
+    x.drawImage(c, 0, 0); r._dir = dir; r._src = c; return r;
+  }
+  // Where the address box sits on the photo the reader just read (in that photo's pixels), and how big its text is.
+  function addrRect(d, cw, ch){
+    const L = [];
+    (d.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => {
+      const ws = (l.words || []).filter(w => w.text && w.text.trim() && w.bbox).map(w => ({ t: w.text.trim(), x0: w.bbox.x0, x1: w.bbox.x1, y0: w.bbox.y0, y1: w.bbox.y1 }));
+      if (ws.length) L.push(ws.sort((a, b) => a.x0 - b.x0));
+    })));
+    if (!L.length) return null;
+    const hs = L.flat().map(w => w.y1 - w.y0).sort((a, b) => a - b), h = hs[Math.floor(hs.length / 2)] || 20;
+    const segs = [];
+    L.forEach(ws => { let cur = [ws[0]]; for (let i = 1; i < ws.length; i++){ if (ws[i].x0 - ws[i-1].x1 > 2.2 * h){ segs.push(cur); cur = []; } cur.push(ws[i]); } segs.push(cur); });
+    const S2 = segs.map(ws => ({ x0: ws[0].x0, x1: ws[ws.length-1].x1, y0: Math.min(...ws.map(w => w.y0)), y1: Math.max(...ws.map(w => w.y1)), text: ws.map(w => w.t).join(" ") }));
+    const lab = S2.find(s => LABEL_RE.test(s.text) && !/instruct/i.test(s.text));
+    const pcs = S2.find(s => (!lab || s.y0 > lab.y0) && pcInLine(s.text, townInfo(S2.map(x => x.text))));
+    if (!lab && !pcs) return null;
+    const ax = lab ? lab.x0 : pcs.x0;
+    const top = lab ? lab.y0 - 1.5 * h : pcs.y0 - 9 * h, bottom = pcs ? pcs.y1 + 6 * h : lab.y1 + 15 * h;
+    const col = S2.filter(s => s.x0 >= ax - 3 * h && s.x0 <= ax + 3.5 * h && s.y1 >= top && s.y0 <= bottom);
+    const right = Math.max(ax + 14 * h, ...col.map(s => s.x1)) + 2 * h;
+    const r = { x: Math.max(0, ax - 2.5 * h), y: Math.max(0, top), h };
+    r.w = Math.min(cw, right) - r.x; r.hh = Math.min(ch, bottom) - r.y;
+    return r.w > 4 * h && r.hh > 4 * h ? r : null;
+  }
+  // That box cut from the full-size photo, enlarged so the text is a comfortable size for the reader.
+  function zoomCanvas(base, r){
+    const dir = base._dir || 0, src = dir ? base._src : base, img = src && src._img, k = src && src._k;
+    if (!img || !k) return null;
+    const pts = [[r.x, r.y], [r.x + r.w, r.y + r.hh]].map(([X, Y]) => dir > 0 ? [Y, src.height - X] : dir < 0 ? [src.width - Y, X] : [X, Y]);
+    const sx = Math.max(0, Math.min(pts[0][0], pts[1][0]) / k), sy = Math.max(0, Math.min(pts[0][1], pts[1][1]) / k);
+    const sw = Math.min(img.naturalWidth - sx, Math.abs(pts[1][0] - pts[0][0]) / k), sh = Math.min(img.naturalHeight - sy, Math.abs(pts[1][1] - pts[0][1]) / k);
+    if (sw < 20 || sh < 20) return null;
+    let sc = Math.min(3, 48 * k / r.h); sc = Math.min(sc, 2600 / Math.max(sw, sh));
+    const z = document.createElement("canvas"); z.width = Math.round(sw * sc); z.height = Math.round(sh * sc);
+    const x = z.getContext("2d", { willReadFrequently: true }); x.imageSmoothingQuality = "high";
+    x.drawImage(img, sx, sy, sw, sh, 0, 0, z.width, z.height);
+    const d = x.getImageData(0, 0, z.width, z.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4){ let g = 0.299*p[i] + 0.587*p[i+1] + 0.114*p[i+2]; g = Math.max(0, Math.min(255, (g - 128) * 1.35 + 140)); p[i] = p[i+1] = p[i+2] = g; }
+    x.putImageData(d, 0, 0);
+    return dir ? turn(z, dir) : z;
   }
   function prepImage(file){
     return new Promise((res, rej) => {
@@ -1896,41 +1942,38 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
           g = Math.max(0, Math.min(255, (g - 128) * 1.35 + 140));
           p[i] = p[i+1] = p[i+2] = g;
         }
-        x.putImageData(d, 0, 0); URL.revokeObjectURL(url); res(c);
+        x.putImageData(d, 0, 0); URL.revokeObjectURL(url); c._img = img; c._k = k; res(c);
       };
       img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image")); };
       img.src = url;
     });
   }
   const SENDER_RE = /its[\s-]?print|its-print\.co\.uk/i;
-  // Town names -> postcode area, so a misread postcode can be checked against the town written above it.
-  const TOWN_AREA = (() => {
-    const m = {}, add = (a, t) => t.split(",").forEach(x => m[x] = a);
-    add("LS","leeds,morley,pudsey,garforth,wetherby,otley,ilkley,rothwell,tadcaster,guiseley,yeadon,horsforth,kippax,boston spa,burton salmon,sherburn in elmet,micklefield,rawdon,drighlington,gildersome,methley,oulton,woodlesford,swillington,allerton bywater,east ardsley,tingley");
-    add("WF","wakefield,wrenthorpe,lofthouse,pontefract,castleford,normanton,dewsbury,batley,ossett,featherstone,knottingley,mirfield,hemsworth,south elmsall,south kirkby,horbury,heckmondwike,ackworth,crofton,sharlston,outwood,stanley,altofts,airedale,glasshoughton,ferrybridge,upton,fitzwilliam");
-    add("BD","bradford,keighley,shipley,bingley,cleckheaton,baildon,queensbury,thornton,skipton,settle,silsden,haworth,saltaire,idle,eccleshill,wibsey,tong,birkenshaw,gomersal,liversedge");
-    add("HD","huddersfield,brighouse,holmfirth,elland,marsden,slaithwaite,honley,kirkburton");
-    add("HX","halifax,sowerby bridge,hebden bridge,todmorden,ripponden");
-    add("HG","harrogate,knaresborough,ripon,pateley bridge");
-    add("YO","york,selby,malton,scarborough,whitby,driffield,bridlington,pickering,thirsk,easingwold,pocklington,filey");
-    add("HU","hull,beverley,hessle,cottingham,hornsea,withernsea");
-    add("DN","doncaster,conisbrough,auckley,rossington,armthorpe,mexborough,edlington,bentley,hatfield,finningley,tickhill,goole,scunthorpe,grimsby,thorne,snaith,howden,retford,gainsborough,cleethorpes,brigg,worksop,bawtry");
-    add("S","sheffield,barnsley,rotherham,rawmarsh,maltby,wath upon dearne,swinton,thurnscoe,hoyland,chesterfield,penistone,wombwell,maltby,dronfield,stocksbridge");
-    add("M","manchester,salford"); add("OL","oldham,rochdale"); add("BB","blackburn,burnley,accrington,nelson,colne,clitheroe");
-    add("BL","bolton,bury"); add("SK","stockport,macclesfield,glossop"); add("WN","wigan"); add("WA","warrington,widnes");
-    add("PR","preston,chorley"); add("L","liverpool"); add("NE","newcastle,gateshead"); add("DH","durham"); add("DL","darlington,northallerton,richmond,bedale");
-    add("TS","middlesbrough,stockton,hartlepool,redcar"); add("SR","sunderland"); add("NG","nottingham,mansfield,newark"); add("DE","derby");
-    add("LE","leicester"); add("LN","lincoln"); add("B","birmingham"); add("CV","coventry"); add("ST","stoke"); add("CH","chester");
-    add("BS","bristol"); add("CF","cardiff"); add("G","glasgow"); add("EH","edinburgh"); add("PE","peterborough"); add("NR","norwich");
-    add("OX","oxford"); add("CB","cambridge"); add("MK","milton keynes"); add("NN","northampton"); add("LA","lancaster,kendal");
+  // Town names -> postcode districts, so a misread postcode can be checked against the town written above it
+  // (Pontefract is WF8, Ossett WF5, Morley LS27 ...). Big cities just give the area.
+  const TOWNS = (() => {
+    const m = {}, rg = (a, x, y) => Array.from({ length: y - x + 1 }, (_, i) => a + (x + i)).join(" ");
+    const add = spec => spec.split(";").forEach(e => { const [names, d] = e.split("="); names.split(",").forEach(n => { n = n.trim(); if (n) m[n] = d.trim().split(/\s+/); }); });
+    add("wakefield=WF1 WF2 WF3 WF4;wrenthorpe,walton=WF2;lofthouse,stanley,outwood,tingley,east ardsley,west ardsley,robin hood=WF3;horbury,crigglestone,crofton,sharlston,ryhill,havercroft,durkar,netherton=WF4;ossett=WF5;normanton,altofts=WF6;featherstone,ackworth,purston=WF7;pontefract,carleton=WF8;hemsworth,south elmsall,south kirkby,fitzwilliam,upton,kinsley=WF9;castleford,glasshoughton,airedale,allerton bywater=WF10;knottingley,ferrybridge,brotherton=WF11;dewsbury=WF12 WF13;thornhill=WF12;ravensthorpe=WF13;mirfield=WF14;liversedge=WF15;heckmondwike=WF16;batley,birstall=WF17");
+    add("leeds=" + rg("LS", 1, 20) + " LS25 LS26 LS27 LS28;morley,gildersome,churwell=LS27;pudsey,farsley,calverley=LS28;garforth,kippax,burton salmon,sherburn in elmet,micklefield,barwick in elmet,ledston=LS25;rothwell,oulton,woodlesford,swillington,methley,mickletown=LS26;wetherby=LS22;boston spa,bramham=LS23;tadcaster=LS24;otley=LS21;ilkley,burley in wharfedale=LS29;guiseley=LS20;yeadon,rawdon=LS19;horsforth=LS18");
+    add("bradford=" + rg("BD", 1, 15) + ";keighley=BD20 BD21 BD22;shipley,saltaire=BD18;baildon=BD17;bingley=BD16;cleckheaton,gomersal=BD19;queensbury,thornton=BD13;skipton=BD23;silsden=BD20;haworth=BD22;idle=BD10;eccleshill=BD2 BD10;wibsey=BD6;tong=BD4;birkenshaw,drighlington=BD11;settle=BD24");
+    add("huddersfield=HD1 HD2 HD3 HD4 HD5 HD7 HD8;brighouse=HD6;holmfirth,honley=HD9;marsden,slaithwaite=HD7;kirkburton=HD8;halifax=HX1 HX2 HX3;elland=HX5;sowerby bridge,ripponden=HX6;hebden bridge=HX7;todmorden=OL14");
+    add("harrogate=HG1 HG2 HG3;knaresborough=HG5;ripon=HG4;pateley bridge=HG3;york=YO1 YO10 YO19 YO23 YO24 YO26 YO30 YO31 YO32;selby=YO8;scarborough=YO11 YO12 YO13;whitby=YO21 YO22;malton=YO17;pickering=YO18;thirsk=YO7;easingwold=YO61;pocklington=YO42;driffield=YO25;bridlington=YO15 YO16;filey=YO14");
+    add("hull=" + rg("HU", 1, 9) + ";beverley=HU17;hessle=HU13;cottingham=HU16;hornsea=HU18;withernsea=HU19");
+    add("doncaster=" + rg("DN", 1, 12) + ";conisbrough,edlington=DN12;auckley,finningley=DN9;rossington,tickhill=DN11;armthorpe=DN3;bentley=DN5;hatfield=DN7;thorne=DN8;bawtry=DN10;goole,snaith,howden=DN14;scunthorpe=DN15 DN16 DN17;grimsby=DN31 DN32 DN33 DN34 DN37;cleethorpes=DN35;retford=DN22;gainsborough=DN21;brigg=DN20");
+    add("sheffield=" + rg("S", 1, 36) + ";barnsley=" + rg("S", 70, 75) + ";rotherham=S60 S61 S65 S66;rawmarsh=S62;maltby=S66;wath upon dearne,thurnscoe=S63;mexborough,swinton=S64;hoyland=S74;wombwell=S73;penistone,stocksbridge=S36;chesterfield=" + rg("S", 40, 45) + ";dronfield=S18;worksop=S80 S81");
+    add("manchester,salford=M;oldham,rochdale=OL;blackburn,burnley,accrington,nelson,colne,clitheroe=BB;bolton,bury=BL;stockport,macclesfield,glossop=SK;wigan=WN;warrington,widnes=WA;preston,chorley=PR;liverpool=L;newcastle,gateshead=NE;durham=DH;darlington,northallerton,richmond,bedale=DL;middlesbrough,stockton,hartlepool,redcar=TS;sunderland=SR;nottingham,mansfield,newark=NG;derby=DE;leicester=LE;lincoln=LN;birmingham=B;coventry=CV;stoke=ST;chester=CH;bristol=BS;cardiff=CF;glasgow=G;edinburgh=EH;peterborough=PE;norwich=NR;oxford=OX;cambridge=CB;milton keynes=MK;northampton=NN;lancaster,kendal=LA");
     return m;
   })();
-  function townArea(lines){
-    let hit = "";
+  // The most specific town named in these lines: { area: "WF", dists: ["WF8"] } (dists null for a big city / area only)
+  function townInfo(lines){
+    let best = null;
     lines.forEach(l => { const low = " " + l.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ") + " ";
-      for (const t in TOWN_AREA) if (low.includes(" " + t + " ")) hit = TOWN_AREA[t]; });
-    return hit;
+      for (const t in TOWNS) if (low.includes(" " + t + " ")){ const d = TOWNS[t], area = d[0].match(/^[A-Z]+/)[0], dists = d.some(x => /\d/.test(x)) ? d : null;
+        if (!best || (dists ? dists.length : 99) <= (best.dists ? best.dists.length : 99)) best = { area, dists }; } });
+    return best;
   }
+  const townArea = lines => { const t = townInfo(lines); return t ? t.area : ""; };
   // OCR look-alikes for postcode characters: ] } and ) for J, $ for S, | and ! for I.
   const pcChars = l => l.toUpperCase().replace(/[\]\}\)]J|J[\]\}\)]/g, "J").replace(/([A-Z0-9])[\)\]\}]([A-Z0-9])/g, "$1J$2").replace(/[\]\}]/g, "J").replace(/\$/g, "S").replace(/[|!]/g, "I");
   // Find a postcode in one line even when the camera misread a character or two. Returns { pc, at, len, score } or null.
@@ -1941,7 +1984,15 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     while (i < a.length && j < b.length){ if (a[i] === b[j]){ i++; j++; continue; } if (++d > 1) return false; if (a.length > b.length) i++; else if (a.length < b.length) j++; else { i++; j++; } }
     return d + (a.length - i) + (b.length - j) <= 1;
   }
+  // up to two letters added, dropped or changed (WES -> WF)
+  function lev(a, b){
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    return d[a.length][b.length];
+  }
   function pcInLine(line, hint){
+    const H = !hint ? null : typeof hint === "string" ? { area: hint, dists: null } : hint;
     const toks = [], re = /\S+/g; let m; const up = pcChars(line);
     let wi = 0;
     while ((m = re.exec(up))) { const t = m[0].replace(/[^A-Z0-9]/g, ""); if (t) toks.push({ t, k: wi }); wi++; }
@@ -1949,17 +2000,26 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     const tryRaw = (raw, at, n) => /* at = word number where it starts */ {
       if (!/\d/.test(raw) || raw.length < 5 || raw.length > 8) return;
       const exact = (raw.slice(0, -3) + " " + raw.slice(-3)).match(/^([A-Z]{1,2}\d[A-Z\d]?) (\d[A-Z]{2})$/);
+      const ex = exact ? exact[1] + " " + exact[2] : "";
       let cands = pcCandidates(raw);
-      if (exact) cands.unshift(exact[1] + " " + exact[2]);
-      const lets = (raw.slice(0, -3).match(/^[A-Z]+/) || [""])[0];
-      if (hint && lets && lets !== hint && near1(lets, hint)) cands.push(...pcCandidates(hint + raw.slice(lets.length)));
-      if (hint) cands.forEach(c => { const area = c.match(/^[A-Z]+/)[0]; if (area.length === 1 && hint.length === 2 && hint.endsWith(area)) cands.push(hint[0] + c); });
+      if (ex) cands.unshift(ex);
+      if (H && H.area){
+        const A = H.area, lets = (raw.slice(0, -3).match(/^[A-Z]+/) || [""])[0], rest = raw.slice(lets.length);
+        // letters misread around the area (WEF7 7PH, WES8 1ES -> WF7, WF8)
+        if (lets && lets !== A && lev(lets, A) <= 2) cands.push(...pcCandidates(A + rest));
+        // area letter misread once the digits are fixed (WE5 -> WF5), or a lost first letter (S10 -> LS10)
+        cands.slice().forEach(c => { const a = c.match(/^[A-Z]+/)[0];
+          if (a !== A && a.length >= A.length && near1(a, A)) cands.push(A + c.slice(a.length));
+          if (a.length === 1 && A.length === 2 && A.endsWith(a)) cands.push(A[0] + c); });
+        // the district number was lost altogether (WF8 1LN read as "WES 1LN"): take it from the town
+        if (H.dists && H.dists.length <= 4 && lets && lev(lets, A) <= 2 && rest.length === 3) H.dists.forEach(D => cands.push(...pcCandidates(D + rest)));
+      }
       for (const c of new Set(cands)){
         if (!/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(c)) continue;
         const [o, i] = c.split(" "), area = o.match(/^[A-Z]+/)[0];
         const known = PCDB ? (PCDB.s[o + " " + i[0]] ? 3 : PCDB.o[o] ? 1.5 : 0) : 1.5;
-        if (!known && !(exact && c === cands[0])) continue;
-        const sc = known + (exact && c === cands[0] ? 2 : 0) + (hint && area === hint ? 3 : 0) + n * 0.1;
+        if (!known && c !== ex) continue;
+        const sc = known + (c === ex ? (known === 3 ? 6 : 2) : 0) + (H && area === H.area ? 3 : 0) + (H && H.dists && H.dists.includes(o) ? 4 : 0) + n * 0.1;
         if (!best || sc > best.score) best = { pc: c, at, n, score: sc };
       }
     };
@@ -1978,7 +2038,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
       if (w.includes("(") && !w.includes(")")) w = w.replace("(", "");
       if (w.includes(")") && !w.includes("(")) w = w.replace(")", "");
       return w;
-    }).filter(w => /[A-Za-z0-9]/.test(w)).join(" ")
+    }).filter(w => /[A-Za-z0-9&]/.test(w)).join(" ").replace(/^& | &$/g, "")
     // lone lower-case letters are specks or box edges read as "i" or "a"
     .replace(/(^| )[a-z](?= |$)/g, "").trim()
     // cut-off words from the order details column ("Ord", "Orde", "Num", "Da") at either end
@@ -1991,6 +2051,10 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
   // Delivery notes have a second column (order number, dates) beside the address. The camera reads its cut-off edge
   // as part of the address lines, so use where each word sits on the photo: keep the column that lines up with the
   // "Delivery Address" heading (or with the postcode, if the heading is out of shot) and drop words far to its right.
+  // "Delivery Address" as the camera may read it ("Delivery Adgreg", "Elivery Address"), and scraps of it ("Deli", "2 Delivef")
+  const LABEL_RE = /(deliver(y)?\s*(to|address|point)|ship\s*to|consignee|delivered\s*to|\b(d|cl)?eliv\w{0,5}\s+(ad|acl)\w{2,7})\s*:?/i;
+  const LABEL_BIT = /^\W*\d*\s*(d|cl)?eli[a-z]{0,5}\W*$/i;
+  const HEADER_RE = /\b(fusion|explore\s*paper|delivery\s*no\w*|despatched|dispatched|product|description|qty|quantity|order\s*(number|no|date|ref)|account\s*ref|page\s*\d)\b/i;
   function columnText(d){
     const L = [];
     (d.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => {
@@ -2004,7 +2068,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
       for (let i = 1; i < ws.length; i++){ if (ws[i].x0 - ws[i-1].x1 > 2.2 * h){ segs.push(cur); cur = []; } cur.push(ws[i]); }
       segs.push(cur); });
     const S2 = segs.map(ws => ({ x0: ws[0].x0, y: ws.reduce((n, w) => n + (w.y0 + w.y1) / 2, 0) / ws.length, text: ws.map(w => w.t).join(" ") }));
-    const lab = S2.find(s => /deliver(y)?\s*(address|to)\b|ship\s*to\b/i.test(s.text));
+    const lab = S2.find(s => LABEL_RE.test(s.text) && !/instruct/i.test(s.text));
     let ax = lab ? lab.x0 : null;
     if (ax == null){ const pc = S2.find(s => pcInLine(s.text, "")); if (pc) ax = pc.x0; }
     if (ax == null) return d.text || "";
@@ -2013,9 +2077,9 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
   }
   function parseNote(text){
     const lines = text.split(/\n/).map(l => l.replace(/\s{2,}/g, " ").trim()).filter(l => l.length > 1);
-    const LABEL = /(deliver(y)?\s*(to|address|point)|ship\s*to|consignee|delivered\s*to)\s*:?/i;
-    let labelIdx = -1; lines.forEach((l, i) => { if (LABEL.test(l)) labelIdx = i; });
-    const hint = townArea(labelIdx >= 0 ? lines.slice(labelIdx, labelIdx + 10) : lines);
+    const LABEL = LABEL_RE;
+    let labelIdx = -1; lines.forEach((l, i) => { if (LABEL.test(l) && !/instruct/i.test(l)) labelIdx = i; });
+    const hint = townInfo(labelIdx >= 0 ? lines.slice(labelIdx, labelIdx + 10) : lines);
     const pcs = [];
     lines.forEach((l, i) => { const f = pcInLine(l, hint); if (f) pcs.push({ i, ...f }); });
     const okPcs = pcs.filter(p => !lines.slice(Math.max(0, p.i - 4), p.i + 1).some(l => SENDER_RE.test(l)));
@@ -2052,7 +2116,9 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
       let t = l;
       if (pick && i === pick.i) t = l.split(/\s+/).slice(0, pick.at).join(" ");
       t = tidy(t.replace(LABEL, ""));
-      if (!t || junk(t) || COUNTRY_RE.test(t) || SENDER_RE.test(t) || /\b(delivery|despatch|dispatch)\s+note\b/i.test(t) || /^(tel|phone|fax|email|e-mail|www|vat|invoice|order|date|account|a\/c|qty)\b/i.test(t)) continue;
+      if (!t || junk(t) || COUNTRY_RE.test(t) || SENDER_RE.test(t) || HEADER_RE.test(t) || LABEL_BIT.test(t) || /\b(delivery|despatch|dispatch)\s+note\b/i.test(t) || /^(tel|phone|fax|email|e-mail|www|vat|invoice|order|date|account|a\/c|qty)\b/i.test(t)) continue;
+      // no letters at all ("1.000"), or the first half of a postcode cut off at the edge of the photo ("S25")
+      if (!/[A-Za-z]{2}/.test(t) || /^[A-Z]{1,2}\d{1,2}[A-Z]?$/i.test(t)) continue;
       out.push(t);
     }
     const clean = out.map(l => l === l.toUpperCase() && /[A-Z]{3}/.test(l) ? l.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : l)
@@ -2096,24 +2162,36 @@ ${t.slice(0, 6000)}`;
       rt.textContent = "Reading the delivery note…";
       const ocrOnce = c => Promise.race([w.recognize(c, {}, { text: true, blocks: true, hocr: false, tsv: false }).then(r => { const d = r.data; try { d.colText = columnText(d); } catch (e){ console.error(e); } return d; }), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 60000))]);
       const score = d => (d.confidence || 0) + (parseNote(d.colText || d.text || "").postcode ? 50 : 0);
-      let data;
+      let data, used = canvas;
       if (canvas.width > canvas.height * 1.1){
         // Delivery notes are portrait: a landscape photo means the camera saved it sideways, so turn it upright first.
         rt.textContent = "Photo came out sideways, straightening it…";
-        const a = await ocrOnce(turn(canvas, 1)), sa = score(a);
-        data = a;
+        const ca = turn(canvas, 1), a = await ocrOnce(ca), sa = score(a);
+        data = a; used = ca;
         if (sa < 120){
           rt.textContent = "Trying the other way round…";
-          const b = await ocrOnce(turn(canvas, -1)), sb = score(b);
-          if (sb > sa) data = b;
-          if (Math.max(sa, sb) < 60){ const c = await ocrOnce(canvas); if (score(c) > score(data)) data = c; }
+          const cb = turn(canvas, -1), b = await ocrOnce(cb), sb = score(b);
+          if (sb > sa){ data = b; used = cb; }
+          if (Math.max(sa, sb) < 60){ const c = await ocrOnce(canvas); if (score(c) > score(data)){ data = c; used = canvas; } }
         }
       } else {
         data = await ocrOnce(canvas);
       }
+      // Closer look: when the address text is small (a wide shot), read the address box again from the full-size photo.
+      try {
+        const zr = addrRect(data, used.width, used.height);
+        if (zr && zr.h < 46 && !$("sheet").hidden){
+          const zc = zoomCanvas(used, zr);
+          if (zc){
+            rt.textContent = "Taking a closer look at the address…";
+            const z = await ocrOnce(zc);
+            if (score(z) >= score(data) - 10){ z.fullText = data.text; data = z; }
+          }
+        }
+      } catch (e){ console.error(e); }
       if ($("sheet").hidden) return;
       const parsed = parseNote(data.colText || data.text || "");
-      parsed.lines = (data.text || "").split(/\n/).map(l => l.trim()).filter(Boolean);
+      parsed.lines = (data.fullText || data.text || "").split(/\n/).map(l => l.trim()).filter(Boolean);
       let r = parsed;
       if (sample && sampleText && (data.text || "").trim().length > 20){
         rt.textContent = "Picking out the address…";
