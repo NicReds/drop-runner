@@ -273,7 +273,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 <body>
 <div class="wrap">
   <header class="top" style="position:relative">
-    <span class="ver" id="appVer" title="App version">v22</span>
+    <span class="ver" id="appVer" title="App version">v23</span>
     <div>
       <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
       <h1>Today's run</h1>
@@ -341,6 +341,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       <span class="seg" role="group" aria-label="Maps app">
         <button type="button" id="mapG" aria-pressed="true">Google</button>
         <button type="button" id="mapA" aria-pressed="false">Apple</button>
+        <button type="button" id="mapW" aria-pressed="false">Waze</button>
       </span>
     </span>
   </div>
@@ -490,7 +491,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   // ---------- storage ----------
   function lsRead(){ try { const v = JSON.parse(localStorage.getItem(LS)||"null"); return v && Array.isArray(v.stops) ? v : null; } catch { return null; } }
   function lsWrite(){ try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} }
-  try { const m = localStorage.getItem(LS+".maps"); if (m === "apple" || m === "google") mapApp = m; } catch {}
+  try { const m = localStorage.getItem(LS+".maps"); if (m === "apple" || m === "google" || m === "waze") mapApp = m; } catch {}
 
   let saveChain = Promise.resolve();
   function persist(){
@@ -511,13 +512,15 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   const destOf = s => [s.name, s.address, s.postcode].filter(Boolean).join(", ") + ", UK";
   function dirUrl(s){
     const d = encodeURIComponent(destOf(s));
+    // Waze finds street addresses better without the business name in front
+    if (mapApp === "waze") return "https://waze.com/ul?q=" + encodeURIComponent([s.address, s.postcode].filter(Boolean).join(", ") || destOf(s)) + "&navigate=yes";
     return mapApp === "apple" ? "https://maps.apple.com/?daddr="+d+"&dirflg=d"
       : "https://www.google.com/maps/dir/?api=1&destination="+d+"&travelmode=driving";
   }
   function routeUrl(){
     const open = routeOrder().filter(s => !s.done).slice(0,10);
     if (!open.length) return null;
-    if (mapApp === "apple") return dirUrl(open[0]);
+    if (mapApp === "apple" || mapApp === "waze") return dirUrl(open[0]);
     const dest = open[open.length-1];
     const way = open.slice(0,-1).map(destOf).join("|");
     return "https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(destOf(dest))
@@ -1484,7 +1487,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     const r = routeUrl(), rb = $("routeBtn");
     const openCount = all.filter(s=>!s.done).length;
     rb.hidden = !r || openCount < 2;
-    if (r){ rb.href = r; rb.textContent = mapApp === "apple" ? "Apple Maps: next drop only" : (openCount > 10 ? "Route next 10 drops" : "Full route in Maps"); }
+    if (r){ rb.href = r; rb.textContent = mapApp !== "google" ? (mapApp === "waze" ? "Waze" : "Apple Maps") + ": next drop only" : (openCount > 10 ? "Route next 10 drops" : "Full route in Maps"); }
 
     const legsNow = PCDB ? plan() : { legs:{} };
     $("list").innerHTML = all.map(s => {
@@ -1516,6 +1519,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     renderTotals(); renderWho(); renderShift();
     $("mapG").setAttribute("aria-pressed", mapApp==="google");
     $("mapA").setAttribute("aria-pressed", mapApp==="apple");
+    $("mapW").setAttribute("aria-pressed", mapApp==="waze");
   }
 
 
@@ -1768,6 +1772,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 
   $("mapG").onclick = () => { mapApp = "google"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
   $("mapA").onclick = () => { mapApp = "apple"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
+  $("mapW").onclick = () => { mapApp = "waze"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
 
   $("exampleBtn").onclick = () => {
     const now = Date.now();
