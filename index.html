@@ -273,7 +273,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 <body>
 <div class="wrap">
   <header class="top" style="position:relative">
-    <span class="ver" id="appVer" title="App version">v21</span>
+    <span class="ver" id="appVer" title="App version">v22</span>
     <div>
       <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
       <h1>Today's run</h1>
@@ -533,17 +533,20 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   let PCDB = null;
   // Postcode clean-up: fixes common misreads (O/0, S/5, B/8, I/1, Z/2, G/6) and checks the result against the postcode table.
   const AMB_D = { O:"0", Q:"0", D:"0", I:"1", L:"1", S:"58", B:"8", Z:"2", G:"6", T:"7" };
-  const AMB_L = { "0":"O", "1":"I", "5":"S", "8":"B", "2":"Z", "6":"G", "7":"T" };
+  const AMB_L = { "0":"O", "1":"IL", "5":"S", "8":"B", "2":"Z", "6":"G", "7":"T" };
+  // the last two letters of a UK postcode are never C, I, K, M, O or V
+  const INWARD_OK = /^\d[ABD-HJLNP-UW-Z]{2}$/;
   function pcCandidates(raw){
     const c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (c.length < 5 || c.length > 7) return [];
     const out = c.slice(0, -3), inw = c.slice(-3);
     const ds = /\d/.test(inw[0]) ? [inw[0]] : (AMB_D[inw[0]] || "").split("").filter(Boolean);
-    const ls = [...inw.slice(1)].map(ch => /[A-Z]/.test(ch) ? ch : AMB_L[ch]);
-    if (!ds.length || ls.some(x => !x)) return [];
+    const lopts = [...inw.slice(1)].map(ch => (/[A-Z]/.test(ch) ? ch : (AMB_L[ch] || "")).split("").filter(x => /[ABD-HJLNP-UW-Z]/.test(x)));
+    if (!ds.length || lopts.some(x => !x.length)) return [];
+    const lss = lopts[0].flatMap(a => lopts[1].map(b => a + b));
     let combos = [""];
-    for (const ch of out){ const o = new Set([ch]); if (AMB_D[ch]) AMB_D[ch].split("").forEach(x => o.add(x)); if (AMB_L[ch]) o.add(AMB_L[ch]); combos = combos.flatMap(pre => [...o].map(x => pre + x)); }
-    return combos.filter(o => /^[A-Z]{1,2}\d[A-Z\d]?$/.test(o)).flatMap(o => ds.map(d => o + " " + d + ls.join("")));
+    for (const ch of out){ const o = new Set([ch]); if (AMB_D[ch]) AMB_D[ch].split("").forEach(x => o.add(x)); if (AMB_L[ch]) AMB_L[ch].split("").forEach(x => o.add(x)); combos = combos.flatMap(pre => [...o].map(x => pre + x)); }
+    return combos.filter(o => /^[A-Z]{1,2}\d[A-Z\d]?$/.test(o)).flatMap(o => ds.flatMap(d => lss.map(ls => o + " " + d + ls)));
   }
   function cleanPc(raw){
     const typed = normPc(raw), cands = pcCandidates(raw);
@@ -786,6 +789,31 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   // ---- shift maths ----
   const breakMins = sh => !sh ? 0 : (Number(sh.brkBase) || 0) + (sh.breaks || []).reduce((n, b) => n + Math.max(0, ((b.e || sh.out || Date.now()) - b.s) / 60000), 0);
   const workedMins = (sh, live) => !sh || !sh.in ? 0 : Math.max(0, ((sh.out || (live ? Date.now() : sh.in)) - sh.in) / 60000 - breakMins(sh));
+  // Break reminder: a notification when the break time is up (the paid break length from My hours, 30 minutes by default).
+  const brkLen = () => Math.max(1, Number(me && me.paidBrk) || 30);
+  let brkTimer = null;
+  function brkEnd(sh){ const b = sh && sh.breaks && sh.breaks[sh.breaks.length - 1]; return b && !b.e ? b.s + (b.len || brkLen()) * 60000 : null; }
+  async function brkNotify(end){
+    const body = "Your break ended at " + hm(end) + ". Tap to open Drop Runner.";
+    try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]); } catch {}
+    try {
+      if ("Notification" in window && Notification.permission === "granted"){
+        const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+        const opts = { body, tag: "fdr-break", renotify: true, requireInteraction: true, vibrate: [400, 150, 400, 150, 400], icon: "icons/fusion-192.png", badge: "icons/fusion-192.png" };
+        if (reg) await reg.showNotification("Break over", opts); else new Notification("Break over", opts);
+      }
+    } catch (e){ console.error(e); }
+    try { const A = window.AudioContext || window.webkitAudioContext; if (A && document.visibilityState === "visible"){ const ac = new A(), o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.25, ac.currentTime); o.start(); o.stop(ac.currentTime + 0.9); } } catch {}
+  }
+  function brkCheck(){
+    clearTimeout(brkTimer);
+    const sh = state.shift, end = brkEnd(sh); if (!end) return;
+    const b = sh.breaks[sh.breaks.length - 1];
+    if (Date.now() >= end){ if (!b.alerted){ b.alerted = true; persist(); brkNotify(end); } }
+    else brkTimer = setTimeout(brkCheck, Math.min(end - Date.now() + 500, 60000));
+    if (!$("shiftBox").hidden && !shiftAsk && !shiftEdit) renderShift();
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") brkCheck(); });
   const onBreak = sh => !!(sh && sh.breaks && sh.breaks.length && !sh.breaks[sh.breaks.length - 1].e);
 
   // ---- my hours (private to the driver: stays on this phone, never in a report) ----
@@ -946,7 +974,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         + '<div class="acts"><button class="btn primary grow" data-act="clock-in">Clock in</button></div>';
     } else if (!sh.out){
       const br = onBreak(sh);
-      h = '<div class="srow"><div><div class="eyebrow">'+(br ? 'On break since '+hm(sh.breaks[sh.breaks.length-1].s) : 'On shift since '+hm(sh.in))+'</div>'
+      const be = br ? brkEnd(sh) : null, bl = be ? Math.round((be - Date.now()) / 60000) : 0;
+      h = '<div class="srow"><div><div class="eyebrow"'+(br && bl <= 0 ? ' style="color:var(--danger)"' : '')+'>'+(br ? (bl > 0 ? 'On break · '+bl+' min left (until '+hm(be)+')' : 'Break over at '+hm(be)+(bl < 0 ? ' · '+(-bl)+' min ago' : '')) : 'On shift since '+hm(sh.in))+'</div>'
         + '<div class="big num">'+fmtH(paidWorked(sh, true))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'+links+'</div>'
         + officialLine(sh)
         + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
@@ -966,7 +995,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     }
     box.innerHTML = h; box.hidden = false;
   }
-  setInterval(() => { if (state.shift && !state.shift.out && !shiftAsk && !shiftEdit && $("checkSheet").hidden) renderShift(); }, 30000);
+  setInterval(() => { if (state.shift && !state.shift.out && !shiftAsk && !shiftEdit && $("checkSheet").hidden) renderShift(); }, 15000);
+  setTimeout(brkCheck, 0);
 
   // ---- van walkaround check ----
   const CHECKS = [
@@ -1332,7 +1362,13 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     const after = () => { e.stopImmediatePropagation(); };
     switch (a){
       case "clock-in": rollDay(); if (!state.shift || !state.shift.in || state.shift.out) state.shift = { in: Date.now(), breaks: [] }; shiftAsk = ""; shiftEdit = false; persist(); render(); openCheck(); return after();
-      case "break": { const sh = state.shift; if (!sh) return after(); sh.breaks = sh.breaks || []; if (onBreak(sh)) sh.breaks[sh.breaks.length - 1].e = Date.now(); else sh.breaks.push({ s: Date.now() }); persist(); renderShift(); return after(); }
+      case "break": { const sh = state.shift; if (!sh) return after(); sh.breaks = sh.breaks || [];
+        if (onBreak(sh)){ sh.breaks[sh.breaks.length - 1].e = Date.now(); clearTimeout(brkTimer); }
+        else {
+          sh.breaks.push({ s: Date.now(), len: brkLen() });
+          try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().then(pm => { if (pm !== "granted") status("Notifications are off, so the reminder only shows in the app. Turn them on in Chrome's site settings."); }); } catch {}
+        }
+        persist(); renderShift(); brkCheck(); return after(); }
       case "clock-out": shiftAsk = "out"; renderShift(); return after();
       case "clock-out-no": shiftAsk = ""; renderShift(); return after();
       case "clock-out-yes": { const sh = state.shift; if (!sh) return after(); const now = Date.now(); if (onBreak(sh)) sh.breaks[sh.breaks.length - 1].e = now; sh.out = now;
@@ -1927,6 +1963,62 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     x.putImageData(d, 0, 0);
     return dir ? turn(z, dir) : z;
   }
+  // The postcode line on the photo: the line the postcode was found on, the line just above "United Kingdom",
+  // or the gap where it should be. Read again on its own, capitals and numbers only.
+  function pcLineRect(d, hint){
+    const L = [];
+    (d.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => {
+      const ws = (l.words || []).filter(w => w.text && w.text.trim() && w.bbox).map(w => ({ t: w.text.trim(), x0: w.bbox.x0, x1: w.bbox.x1, y0: w.bbox.y0, y1: w.bbox.y1 }));
+      if (ws.length) L.push(ws.sort((a, b) => a.x0 - b.x0));
+    })));
+    if (!L.length) return null;
+    const hs = L.flat().map(w => w.y1 - w.y0).sort((a, b) => a - b), h = hs[Math.floor(hs.length / 2)] || 20;
+    const segs = [];
+    L.forEach(ws => { let cur = [ws[0]]; for (let i = 1; i < ws.length; i++){ if (ws[i].x0 - ws[i-1].x1 > 2.2 * h){ segs.push(cur); cur = []; } cur.push(ws[i]); } segs.push(cur); });
+    const S2 = segs.map(ws => ({ x0: ws[0].x0, x1: ws[ws.length-1].x1, y0: Math.min(...ws.map(w => w.y0)), y1: Math.max(...ws.map(w => w.y1)), text: ws.map(w => w.t).join(" ") }));
+    const lab = S2.find(s => LABEL_RE.test(s.text) && !/instruct/i.test(s.text));
+    const pcs = S2.find(s => (!lab || s.y0 > lab.y0) && pcInLine(s.text, hint));
+    // no heading in the shot: line up on the town lines instead
+    const towns = S2.filter(s => townInfo([s.text]));
+    const ax = lab ? lab.x0 : pcs ? pcs.x0 : towns.length ? Math.min(...towns.map(s => s.x0)) : null; if (ax == null) return null;
+    const col = S2.filter(s => s.x0 >= ax - 3 * h && s.x0 <= ax + 3.5 * h && (!lab || s.y0 > lab.y1 - 0.3 * h)).sort((a, b) => a.y0 - b.y0);
+    const stop = col.findIndex(s => /instruct/i.test(s.text));
+    const body = stop >= 0 ? col.slice(0, stop) : col;
+    // one-line windows, starting just inside the box edge (the edge and a hole punch confuse the reader)
+    const one = (y, hh, x0) => ({ x: x0 - 0.15 * h, y: y - 0.3 * h, w: 9 * h, hh: hh + 0.6 * h, h });
+    if (pcs) return [one(pcs.y0, pcs.y1 - pcs.y0, Math.max(ax, pcs.x0))];
+    const ui = body.findIndex(s => COUNTRY_RE.test(tidy(s.text)));
+    const before = ui >= 0 ? body.slice(0, ui) : body;
+    // the last real address line (a word or a town); anything after it may be a garbled postcode
+    const real = before.filter(s => /[a-z]{3}/.test(s.text) || townInfo([s.text])), last = real[real.length - 1];
+    if (!last) return null;
+    const out = [];
+    before.filter(s => s.y0 > last.y0 && s.y1 - s.y0 <= 1.5 * h).forEach(s => out.push(one(s.y0, s.y1 - s.y0, Math.max(ax, s.x0))));
+    const top = last.y1 - 0.1 * h, bottom = ui >= 0 ? body[ui].y0 : last.y1 + 2.2 * h;
+    for (let y = top; y + 0.8 * h <= bottom + 0.2 * h && out.length < 6; y += 0.45 * h) out.push(one(y, Math.min(1.15 * h, bottom - y), ax));
+    return out.length ? out : null;
+  }
+  async function rereadPc(w, cv, d, hint){
+    const rects = pcLineRect(d, hint); if (!rects) return null;
+    await w.setParameters({ tessedit_pageseg_mode: "7", tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 " });
+    try {
+      let best = null;
+      for (const r of rects){
+        const x0 = Math.max(0, r.x), y0 = Math.max(0, r.y), sw = Math.min(cv.width - x0, r.w), sh = Math.min(cv.height - y0, r.hh);
+        if (sw < 10 || sh < 6) continue;
+        const k = Math.max(1, Math.min(4, 64 / r.h)), pad = 24;
+        const c = document.createElement("canvas"); c.width = Math.round(sw * k) + 2 * pad; c.height = Math.round(sh * k) + 2 * pad;
+        const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = "high";
+        x.drawImage(cv, x0, y0, sw, sh, pad, pad, c.width - 2 * pad, c.height - 2 * pad);
+        const res = await Promise.race([w.recognize(c, {}, { text: true, blocks: false, hocr: false, tsv: false }), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 15000))]);
+        const g = pcInLine((res.data.text || "").replace(/\n/g, " "), hint);
+        if (typeof DBGPC === "function") DBGPC(r, res.data.text, g, c);
+        if (g && (!best || g.score > best.score)) best = g;
+        if (best && best.score >= 10) break;
+      }
+      return best ? best.pc : null;
+    } finally { await w.setParameters({ tessedit_pageseg_mode: "6", tessedit_char_whitelist: "" }); }
+  }
   function prepImage(file){
     return new Promise((res, rej) => {
       const img = new Image(), url = URL.createObjectURL(file);
@@ -1962,7 +2054,8 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     add("hull=" + rg("HU", 1, 9) + ";beverley=HU17;hessle=HU13;cottingham=HU16;hornsea=HU18;withernsea=HU19");
     add("doncaster=" + rg("DN", 1, 12) + ";conisbrough,edlington=DN12;auckley,finningley=DN9;rossington,tickhill=DN11;armthorpe=DN3;bentley=DN5;hatfield=DN7;thorne=DN8;bawtry=DN10;goole,snaith,howden=DN14;scunthorpe=DN15 DN16 DN17;grimsby=DN31 DN32 DN33 DN34 DN37;cleethorpes=DN35;retford=DN22;gainsborough=DN21;brigg=DN20");
     add("sheffield=" + rg("S", 1, 36) + ";barnsley=" + rg("S", 70, 75) + ";rotherham=S60 S61 S65 S66;rawmarsh=S62;maltby=S66;wath upon dearne,thurnscoe=S63;mexborough,swinton=S64;hoyland=S74;wombwell=S73;penistone,stocksbridge=S36;chesterfield=" + rg("S", 40, 45) + ";dronfield=S18;worksop=S80 S81");
-    add("manchester,salford=M;oldham,rochdale=OL;blackburn,burnley,accrington,nelson,colne,clitheroe=BB;bolton,bury=BL;stockport,macclesfield,glossop=SK;wigan=WN;warrington,widnes=WA;preston,chorley=PR;liverpool=L;newcastle,gateshead=NE;durham=DH;darlington,northallerton,richmond,bedale=DL;middlesbrough,stockton,hartlepool,redcar=TS;sunderland=SR;nottingham,mansfield,newark=NG;derby=DE;leicester=LE;lincoln=LN;birmingham=B;coventry=CV;stoke=ST;chester=CH;bristol=BS;cardiff=CF;glasgow=G;edinburgh=EH;peterborough=PE;norwich=NR;oxford=OX;cambridge=CB;milton keynes=MK;northampton=NN;lancaster,kendal=LA");
+    add("burnley=BB10 BB11 BB12;padiham=BB12;nelson,brierfield,barrowford=BB9;colne=BB8;accrington,oswaldtwistle=BB5;blackburn=BB1 BB2 BB6;darwen=BB3;clitheroe,whalley=BB7;rossendale,rawtenstall,haslingden,bacup=BB4 OL13;great harwood=BB6");
+    add("manchester,salford=M;oldham,rochdale=OL;bolton,bury=BL;stockport,macclesfield,glossop=SK;wigan=WN;warrington,widnes=WA;preston,chorley=PR;liverpool=L;newcastle,gateshead=NE;durham=DH;darlington,northallerton,richmond,bedale=DL;middlesbrough,stockton,hartlepool,redcar=TS;sunderland=SR;nottingham,mansfield,newark=NG;derby=DE;leicester=LE;lincoln=LN;birmingham=B;coventry=CV;stoke=ST;chester=CH;bristol=BS;cardiff=CF;glasgow=G;edinburgh=EH;peterborough=PE;norwich=NR;oxford=OX;cambridge=CB;milton keynes=MK;northampton=NN;lancaster,kendal=LA");
     return m;
   })();
   // The most specific town named in these lines: { area: "WF", dists: ["WF8"] } (dists null for a big city / area only)
@@ -2017,6 +2110,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
       for (const c of new Set(cands)){
         if (!/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(c)) continue;
         const [o, i] = c.split(" "), area = o.match(/^[A-Z]+/)[0];
+        if (!INWARD_OK.test(i)) continue;
         const known = PCDB ? (PCDB.s[o + " " + i[0]] ? 3 : PCDB.o[o] ? 1.5 : 0) : 1.5;
         if (!known && c !== ex) continue;
         const sc = known + (c === ex ? (known === 3 ? 6 : 2) : 0) + (H && area === H.area ? 3 : 0) + (H && H.dists && H.dists.includes(o) ? 4 : 0) + n * 0.1;
@@ -2044,6 +2138,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     // cut-off words from the order details column ("Ord", "Orde", "Num", "Da") at either end
     .replace(/^(or|orc|ord\w?|orde\w?|num\w{0,3}|da|de|del)\s+(?=\S)/i, "").replace(/\s+(or|orc|ord\w?|orde\w?|num\w{0,3}|da|de)$/i, "")
     // a lone letter or digit at the end is usually from the next column, unless it's "Unit B", "Block 5" and so on
+    .replace(/([A-Za-z]{4,})\.$/, "$1")
     .replace(/(\S+) [A-Za-z0-9]$/, (m, prev) => /^(unit|block|flat|building|bldg|suite|plot|gate|door|bay|dock|wing|floor|phase|house|hall|no|apartment|apt)$/i.test(prev) ? m : prev).trim();
   // Text from the column next door or specks read as letters: very short, mostly symbols, or a lone lower-case scrap.
   const junk = l => { const letters = (l.match(/[A-Za-z]/g) || []).length, digits = (l.match(/\d/g) || []).length;
@@ -2121,6 +2216,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
       if (!/[A-Za-z]{2}/.test(t) || /^[A-Z]{1,2}\d{1,2}[A-Z]?$/i.test(t)) continue;
       out.push(t);
     }
+    for (let a = out.length - 2; a >= 1; a--) if (out.slice(a + 1).some(b => b.toLowerCase() === out[a].toLowerCase())) out.splice(a, 1);
     const clean = out.map(l => l === l.toUpperCase() && /[A-Z]{3}/.test(l) ? l.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : l)
       .map(l => l.replace(/^([a-z])/, c => c.toUpperCase()));
     // a name split over two lines ("Burton Salmon Community" / "Primary School") is joined back up
@@ -2185,13 +2281,35 @@ ${t.slice(0, 6000)}`;
           if (zc){
             rt.textContent = "Taking a closer look at the address…";
             const z = await ocrOnce(zc);
-            if (score(z) >= score(data) - 10){ z.fullText = data.text; data = z; }
+            if (score(z) >= score(data) - 10){ z.fullText = data.text; z.cv = zc; data = z; }
           }
+        }
+      } catch (e){ console.error(e); }
+      // Postcode missing, or not one that goes with the town on the note: read the postcode line again on its own.
+      let pcFix = "", pcDoubt = "";
+      try {
+        const first = parseNote(data.colText || data.text || ""), lines0 = (data.colText || data.text || "").split(/\n/);
+        const town = townInfo(lines0), outw = (first.postcode || "").split(" ")[0];
+        const doubtful = !first.postcode || (town && town.dists && !town.dists.includes(outw));
+        if (doubtful && !$("sheet").hidden){
+          rt.textContent = "Checking the postcode…";
+          pcFix = await rereadPc(w, data.cv || used, data, town) || "";
+          const fo = pcFix.split(" ")[0];
+          if (pcFix && first.postcode && town && town.dists && !town.dists.includes(fo)) pcFix = "";
+          const final = pcFix || first.postcode;
+          if (final && town && town.dists && !town.dists.includes(final.split(" ")[0])) pcDoubt = final + " doesn't usually go with " + town.dists.join("/") + " for the town on this note. Check it against the note.";
         }
       } catch (e){ console.error(e); }
       if ($("sheet").hidden) return;
       const parsed = parseNote(data.colText || data.text || "");
       parsed.lines = (data.fullText || data.text || "").split(/\n/).map(l => l.trim()).filter(Boolean);
+      if (pcFix && !parsed.name){
+        // nothing was anchored without a postcode: put the one just read back in, above "United Kingdom" or at the end
+        const ls = (data.colText || data.text || "").split(/\n/), ui = ls.findIndex(l => COUNTRY_RE.test(tidy(l)));
+        ls.splice(ui >= 0 ? ui : ls.length, 0, pcFix);
+        const again = parseNote(ls.join("\n")); Object.assign(parsed, { name: again.name, address: again.address, note: again.note || parsed.note });
+      }
+      if (pcFix){ parsed.postcode = pcFix; parsed.address = parsed.address.split(", ").filter(x => !/^[A-Z0-9]{2,4}\s?[A-Z0-9]{2,4}$/i.test(x) || /[a-z]{3}/.test(x)).join(", "); }
       let r = parsed;
       if (sample && sampleText && (data.text || "").trim().length > 20){
         rt.textContent = "Picking out the address…";
@@ -2208,7 +2326,8 @@ ${t.slice(0, 6000)}`;
       $("fPhone").value = r.phone || ""; $("fNote").value = r.note || "";
       $("saveBtn").textContent = "Add as drop " + drop;
       if (!r.postcode && !r.address){ $("formErr").textContent = "Couldn't find an address on that photo. Type the postcode, or discard and take a closer, flatter photo."; $("formErr").hidden = false; }
-      showLines(parsed); checkDup();
+      showLines(parsed); checkDup(); checkPc();
+      if (pcDoubt && $("fPc").value){ const pw = $("pcWarn"); pw.hidden = false; pw.textContent = pcDoubt; }
     } catch (e){
       $("reading").hidden = true; setBusy(false); $("sheetTitle").textContent = "Type the drop";
       $("fDrop").value = state.stops.length ? maxDrop()+1 : 1;

@@ -1,6 +1,6 @@
 // Keeps Fusion Drop Runner working with a poor signal: app files come from the phone,
 // and the page itself is refreshed from the web whenever there is a connection.
-const VERSION = "fdr-v21";
+const VERSION = "fdr-v22";
 const CORE = ["./", "index.html", "config.js", "manifest.webmanifest", "ukpc.json", "tesseract.min.js",
   "jspdf.umd.min.js", "icons/fusion-192.png", "icons/fusion-512.png", "icons/fusion-apple-180.png"];
 const HEAVY = ["ocr/worker.min.js", "ocr/core/tesseract-core-simd-lstm.wasm.js", "ocr/core/tesseract-core-lstm.wasm.js", "ocr/lang/eng-data.wasm"];
@@ -35,4 +35,13 @@ self.addEventListener("fetch", e => {
     if (r.ok || r.type === "opaque") { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
     return r;
   })));
+});
+
+// Tapping the "Break over" notification brings the app back to the front.
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    const open = list.find(c => "focus" in c);
+    return open ? open.focus() : self.clients.openWindow("./");
+  }));
 });
