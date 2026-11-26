@@ -218,6 +218,10 @@ h1{font-weight:700;text-shadow:0 0 18px rgba(74,163,255,.28)}
 .reason{min-height:38px;padding:0 12px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--fg);font-size:14px}
 .reason[aria-pressed="true"]{border-color:var(--warn);color:var(--warn);box-shadow:0 0 10px rgba(255,179,64,.35)}
 .btn.skip{color:var(--warn);border-color:rgba(255,179,64,.45)}
+.chip.moved{background:var(--neon-faint);color:var(--neon);box-shadow:0 0 8px rgba(74,163,255,.3)}
+.btn.donext{color:var(--neon);border-color:rgba(74,163,255,.45)}
+.btn.mv{min-width:84px;font-size:15px}
+#orderNote{margin-top:-4px}
 .chip.skipped{background:var(--warn-bg);color:var(--warn);box-shadow:0 0 8px rgba(255,179,64,.3)}
 .chip.fail{background:var(--danger-bg);color:var(--danger);box-shadow:0 0 8px rgba(255,107,107,.3)}
 .stop.failed .name{text-decoration:line-through;color:var(--muted)}
@@ -265,29 +269,75 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 .stat b.pos,.stat b.neg{font-family:var(--mono)}
 .offrow{display:grid;grid-template-columns:44px 1fr 1fr;gap:8px;align-items:center}
 .offrow input{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--fg);width:100%;font-size:15px}
+.baltag{display:inline-flex;align-items:baseline;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:5px 10px;cursor:pointer;color:var(--fg)}
+.baltag > span{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.baltag b{font-family:var(--mono);font-size:18px;font-weight:600}
 #hrSet summary{cursor:pointer;color:var(--neon);font-size:15px;font-weight:600}
 #hrSet[open]{display:flex;flex-direction:column;gap:8px}
 @media (prefers-reduced-motion:reduce){.next{animation:none}}
+
+/* ---- pages and tab bar ---- */
+body:not(.pg-run) [data-page="run"],body:not(.pg-shift) [data-page="shift"],body:not(.pg-week) [data-page="week"],body:not(.pg-set) [data-page="set"]{display:none!important}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:12;display:flex;background:rgba(20,24,29,.98);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs button{flex:1;background:none;border:0;color:var(--muted);padding:8px 0 9px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600;letter-spacing:.02em;min-height:56px}
+.tabs button[aria-current="page"]{color:var(--neon);text-shadow:0 0 8px rgba(74,163,255,.5)}
+.tabs button[aria-current="page"] svg{filter:drop-shadow(0 0 6px rgba(74,163,255,.6))}
+.dock{bottom:calc(57px + env(safe-area-inset-bottom,0px));padding-bottom:8px}
+body:not(.pg-run) .dock{background:none;border:0;box-shadow:none;padding:0 16px 4px;pointer-events:none}
+body:not(.pg-run) .dock .in{display:none}
+body:not(.pg-run) .dock .status:empty{display:none}
+body:not(.pg-run) .dock .status{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--fg);max-width:588px;margin:0 auto 6px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.wrap{padding-bottom:200px}
+body:not(.pg-run) .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+[data-page="set"] .setrow{grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:end}
+[data-page="set"] .setrow .field .label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-page="set"] .setrow .field:has(#setDone){grid-column:1/-1}
+#setDone{width:100%;min-height:46px}
+[data-page="set"] .foot > span:last-child{width:100%;font-size:0}
+[data-page="set"] .foot .seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+[data-page="set"] .foot .seg button{font-size:14px;padding:8px 2px;min-height:44px}
+body.pg-week #weekSheet,body.pg-shift #hoursSheet{position:static;background:none;z-index:auto;display:block;padding:0 16px 96px}
+body.pg-week #weekSheet .panel,body.pg-shift #hoursSheet .panel{max-height:none;overflow:visible;margin:0 auto;border:1px solid var(--line);border-radius:var(--r);box-shadow:none;padding:14px}
+body.pg-week [data-act="week-close"],body.pg-shift [data-act="hours-close"]{display:none}
+body.pg-week .wrap,body.pg-shift .wrap{padding-bottom:18px}
+.top{align-items:center}
+.top h1{font-size:28px}
+#hdrBal{margin-left:auto}
+.top .progress{flex-basis:100%}
+body.pg-shift #hdrBal,body.pg-set #hdrBal{display:none}
+.tsum{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:var(--fg);font-size:15px;text-align:left}
+.tsum b{font-family:var(--mono);color:var(--neon);font-weight:600}
+.tsum .chev{color:var(--muted);transition:transform .2s;font-size:18px}
+#totals.open .tsum .chev{transform:rotate(90deg)}
+#totals:not(.open) .stats,#totals:not(.open) #tLeft,#totals:not(.open) #tActual,#totals:not(.open) .tlinks{display:none}
+#totals{gap:8px;padding:10px 14px}
+.stop.done:not(.open){padding:8px 12px;cursor:pointer}
+.stop.done:not(.open) .row{align-items:center}
+.stop.done:not(.open) .badge{min-width:34px;height:34px;font-size:16px}
+.stop.done:not(.open) .name{font-size:15px}
+.stop.done:not(.open) .addr,.stop.done:not(.open) .acts,.stop.done:not(.open) .leg,.stop.done:not(.open) .note,.stop.done:not(.open) .extras,.stop.done:not(.open) .retry{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top" style="position:relative">
-    <span class="ver" id="appVer" title="App version">v23</span>
+    <span class="ver" id="appVer" title="App version">v27</span>
     <div>
       <div class="label"><span style="color:var(--sign)">Fusion Drop Runner</span> · <span id="dateLabel">Today</span></div>
-      <h1>Today's run</h1>
+      <h1 id="pageTitle">Today's run</h1>
       <button type="button" class="who" id="who" aria-label="Driver and van"></button>
     </div>
-    <div class="progress" aria-live="polite">
+    <button type="button" class="baltag" id="hdrBal" data-act="hours-open" hidden></button>
+    <div class="progress" data-page="run" aria-live="polite">
       <span class="meta num" id="countLabel">0 of 0 delivered</span>
       <div class="bar" aria-hidden="true"><i id="barFill" style="width:0%"></i></div>
     </div>
   </header>
 
-  <section id="shiftBox" class="shift" aria-label="Shift" hidden></section>
-  <div id="banner" class="banner" hidden></div>
-  <section id="totals" class="totals" aria-label="Run totals" hidden>
+  <section id="shiftBox" class="shift" data-page="shift" aria-label="Shift" hidden></section>
+  <div id="banner" class="banner" data-page="run" hidden></div>
+  <section id="totals" class="totals" data-page="run" aria-label="Run totals" hidden>
+    <button type="button" class="tsum" id="tSum" aria-expanded="false"></button>
     <div class="stats">
       <div class="stat"><b id="tMiles">–</b><span id="tMilesLbl">miles (est.)</span></div>
       <div class="stat"><b id="tDrive">–</b><span id="tDriveLbl">driving (est.)</span></div>
@@ -296,32 +346,17 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     <div class="tline" id="tLeft"></div>
     <div class="tline" id="tActual"></div>
     <div class="tline" id="tWarn"></div>
-    <div class="tline"><span id="tFrom">From base</span><span style="display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="linkbtn" data-act="finish-ask" id="finishLink">Finish day</button><button type="button" class="linkbtn" data-act="week-open">Week report</button><button type="button" class="linkbtn" data-act="report">PDF</button><button type="button" class="linkbtn" data-act="csv">CSV</button><button type="button" class="linkbtn" id="setBtn">Settings</button></span></div>
-    <div id="setBox" hidden style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:10px">
-      <div class="setrow">
-        <div class="field"><label class="label" for="sDepot">Base postcode</label><input id="sDepot" autocomplete="off" style="text-transform:uppercase" placeholder="BB1 5AA"></div>
-        <div class="field"><label class="label" for="sStop">Mins per drop</label><input id="sStop" inputmode="numeric" class="num"></div>
-        <div class="field"><label class="label" for="sFactor">Road factor</label><input id="sFactor" inputmode="decimal" class="num"></div>
-      </div>
-      <div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))">
-        <div class="field"><label class="label" for="sDriver">Driver</label><input id="sDriver" autocomplete="off" placeholder="Name for the report"></div>
-        <div class="field"><label class="label" for="sVan">Van reg</label><input id="sVan" autocomplete="off" style="text-transform:uppercase" placeholder="AB12 CDE"></div>
-      </div>
-      <label class="chk"><input type="checkbox" id="sReturn"> Return to base at the end</label>
-      <div class="setrow">
-        <div class="field"><label class="label" for="sOdoA">Van miles start</label><input id="sOdoA" inputmode="numeric" class="num" placeholder="Odometer"></div>
-        <div class="field"><label class="label" for="sOdoB">Van miles end</label><input id="sOdoB" inputmode="numeric" class="num" placeholder="Odometer"></div>
-        <div class="field" style="justify-content:flex-end"><button type="button" class="btn small" id="setDone">Done</button></div>
-      </div>
-      <div class="hint" id="setHint">Miles and times are estimates from postcode locations, adjusted for road distance. Enter the van's odometer for the real mileage.</div>
-    </div>
+    <div class="tline tlinks"><span id="tFrom">From base</span><span style="display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="linkbtn" data-act="finish-ask" id="finishLink">Finish day</button><button type="button" class="linkbtn" data-act="report">PDF</button><button type="button" class="linkbtn" data-act="csv">CSV</button><button type="button" class="linkbtn" id="setBtn" hidden>Settings</button></span></div>
   </section>
-  <section id="nextBox" class="next" hidden aria-label="Next drop"></section>
+  <section id="nextBox" class="next" data-page="run" hidden aria-label="Next drop"></section>
 
-  <section aria-label="All drops" style="display:flex;flex-direction:column;gap:10px">
+  <section data-page="run" aria-label="All drops" style="display:flex;flex-direction:column;gap:10px">
     <div class="listhead">
       <span class="label">Drops in delivery order</span>
-      <a id="routeBtn" class="btn small" target="_blank" rel="noopener" hidden>Full route in Maps</a>
+      <span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn small" id="reorderBtn" data-act="reorder" hidden>Reorder</button><a id="routeBtn" class="btn small" target="_blank" rel="noopener" hidden>Full route in Maps</a></span>
+    </div>
+    <div id="orderNote" class="hint" hidden></div>
+    <div hidden>
     </div>
     <ol class="list" id="list"></ol>
     <div id="empty" class="empty">
@@ -335,19 +370,50 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     </div>
   </section>
 
-  <div class="foot">
+  <div id="clearZone" data-page="run"><button class="btn small danger" id="clearBtn" type="button" hidden>Clear the run</button></div>
+  <section class="totals" data-page="set" aria-label="Settings">
+    <span class="label">Run settings</span>
+    <div id="setBox" style="display:flex;flex-direction:column;gap:10px">
+      <div class="setrow">
+        <div class="field"><label class="label" for="sDepot">Base postcode</label><input id="sDepot" autocomplete="off" style="text-transform:uppercase" placeholder="BB1 5AA"></div>
+        <div class="field"><label class="label" for="sStop">Mins per drop</label><input id="sStop" inputmode="numeric" class="num"></div>
+        <div class="field"><label class="label" for="sFactor">Road factor</label><input id="sFactor" inputmode="decimal" class="num"></div>
+      </div>
+      <div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="field"><label class="label" for="sDriver">Driver</label><input id="sDriver" autocomplete="off" placeholder="Name for the report"></div>
+        <div class="field"><label class="label" for="sVan">Van reg</label><input id="sVan" autocomplete="off" style="text-transform:uppercase" placeholder="AB12 CDE"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="sReturn"> Return to base at the end</label>
+      <div class="setrow">
+        <div class="field"><label class="label" for="sOdoA">Van miles start</label><input id="sOdoA" inputmode="numeric" class="num" placeholder="Odometer"></div>
+        <div class="field"><label class="label" for="sOdoB">Van miles end</label><input id="sOdoB" inputmode="numeric" class="num" placeholder="Odometer"></div>
+        <div class="field" style="justify-content:flex-end"><button type="button" class="btn small" id="setDone">Back to run</button></div>
+      </div>
+      <div class="hint" id="setHint">Miles and times are estimates from postcode locations, adjusted for road distance. Enter the van's odometer for the real mileage.</div>
+    </div>
+  </section>
+  <section class="totals" data-page="set" aria-label="Van check">
+    <span class="label">Van check</span>
+    <label class="chk"><input type="checkbox" id="sVanCheck"> Ask for a van walkaround check when I clock in</label>
+    <div class="hint">When it's on, the check opens at clock-in and goes in the weekly report to the office. When it's off, the report leaves van checks out.</div>
+  </section>
+  <section class="totals" data-page="set" aria-label="Maps and saving">
+    <span class="label">Maps app for directions</span>
+  <div class="foot" style="flex-direction:column;align-items:flex-start">
     <span id="saveState">Saved on this phone</span>
     <span style="display:flex;align-items:center;gap:8px">Maps app
       <span class="seg" role="group" aria-label="Maps app">
         <button type="button" id="mapG" aria-pressed="true">Google</button>
         <button type="button" id="mapA" aria-pressed="false">Apple</button>
         <button type="button" id="mapW" aria-pressed="false">Waze</button>
+        <button type="button" id="mapT" aria-pressed="false">TomTom</button>
       </span>
     </span>
   </div>
-  <div id="clearZone"><button class="btn small danger" id="clearBtn" type="button" hidden>Clear the run</button></div>
+  </section>
 </div>
 
+<nav class="tabs" id="tabs" aria-label="Pages"><button type="button" data-tab="shift"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Shift</button><button type="button" data-tab="run"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Run</button><button type="button" data-tab="week"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Week</button><button type="button" data-tab="set"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button></nav>
 <div class="dock">
   <div class="in">
     <button class="scan" id="scanBtn" type="button">
@@ -491,7 +557,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   // ---------- storage ----------
   function lsRead(){ try { const v = JSON.parse(localStorage.getItem(LS)||"null"); return v && Array.isArray(v.stops) ? v : null; } catch { return null; } }
   function lsWrite(){ try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} }
-  try { const m = localStorage.getItem(LS+".maps"); if (m === "apple" || m === "google" || m === "waze") mapApp = m; } catch {}
+  try { const m = localStorage.getItem(LS+".maps"); if (m === "apple" || m === "google" || m === "waze" || m === "tomtom") mapApp = m; } catch {}
 
   let saveChain = Promise.resolve();
   function persist(){
@@ -505,7 +571,24 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   }
 
   // ---------- helpers ----------
-  const sorted = () => [...state.stops].sort((a,b) => (a.drop - b.drop) || (a.added - b.added));
+  const byDrop = (a,b) => (a.drop - b.drop) || (a.added - b.added);
+  // drops run in number order unless the driver has moved some ("Do next" or the reorder arrows);
+  // the drop numbers themselves never change, so they still match the paper notes
+  function sorted(){
+    const a = [...state.stops];
+    if (!a.some(s => s.pos != null)) return a.sort(byDrop);
+    const placed = a.filter(s => s.pos != null).sort((x, y) => x.pos - y.pos);
+    for (const s of a.filter(s => s.pos == null).sort(byDrop)){
+      let i = 0; for (let j = placed.length - 1; j >= 0; j--) if (placed[j].drop < s.drop){ i = j + 1; break; }
+      placed.splice(i, 0, s);
+    }
+    return placed;
+  }
+  const customOrder = () => state.stops.some(s => s.pos != null);
+  // if the drops end up back in number order, forget the custom order altogether
+  const setOrder = list => { const nat = [...state.stops].sort(byDrop); if (list.every((s, i) => s === nat[i])) state.stops.forEach(x => { delete x.pos; delete x.moved; }); else list.forEach((s, i) => { s.pos = i; }); };
+  const unskip = s => { delete s.skipped; delete s.skipReason; delete s.skipAt; delete s.skipTime; };
+  let reorderMode = false;
   const routeOrder = () => { const a = sorted(); return a.filter(s => s.done || !s.skipped).concat(a.filter(s => !s.done && s.skipped).sort((x, y) => (x.skipAt||0) - (y.skipAt||0))); };
   const nextStop = () => routeOrder().find(s => !s.done);
   const delivered = s => s.done && !s.failed;
@@ -513,6 +596,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   function dirUrl(s){
     const d = encodeURIComponent(destOf(s));
     // Waze finds street addresses better without the business name in front
+    // TomTom only takes map coordinates: the exact postcode position if it's been looked up, else the rough area
+    if (mapApp === "tomtom"){ const ll = pcLL(pcOf(s)); return ll ? "tomtomgo://x-callback-url/navigate?destination=" + ll.lat.toFixed(6) + "," + ll.lng.toFixed(6) : "https://www.google.com/maps/dir/?api=1&destination=" + d + "&travelmode=driving"; }
     if (mapApp === "waze") return "https://waze.com/ul?q=" + encodeURIComponent([s.address, s.postcode].filter(Boolean).join(", ") || destOf(s)) + "&navigate=yes";
     return mapApp === "apple" ? "https://maps.apple.com/?daddr="+d+"&dirflg=d"
       : "https://www.google.com/maps/dir/?api=1&destination="+d+"&travelmode=driving";
@@ -520,7 +605,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   function routeUrl(){
     const open = routeOrder().filter(s => !s.done).slice(0,10);
     if (!open.length) return null;
-    if (mapApp === "apple" || mapApp === "waze") return dirUrl(open[0]);
+    if (mapApp !== "google") return dirUrl(open[0]);
     const dest = open[open.length-1];
     const way = open.slice(0,-1).map(destOf).join("|");
     return "https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(destOf(dest))
@@ -539,12 +624,13 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   const AMB_L = { "0":"O", "1":"IL", "5":"S", "8":"B", "2":"Z", "6":"G", "7":"T" };
   // the last two letters of a UK postcode are never C, I, K, M, O or V
   const INWARD_OK = /^\d[ABD-HJLNP-UW-Z]{2}$/;
+  const INW_SWAP = { I:"L", O:"DQ", C:"G", V:"Y", K:"X", M:"N" };
   function pcCandidates(raw){
     const c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (c.length < 5 || c.length > 7) return [];
     const out = c.slice(0, -3), inw = c.slice(-3);
     const ds = /\d/.test(inw[0]) ? [inw[0]] : (AMB_D[inw[0]] || "").split("").filter(Boolean);
-    const lopts = [...inw.slice(1)].map(ch => (/[A-Z]/.test(ch) ? ch : (AMB_L[ch] || "")).split("").filter(x => /[ABD-HJLNP-UW-Z]/.test(x)));
+    const lopts = [...inw.slice(1)].map(ch => (/[A-Z]/.test(ch) ? (INW_SWAP[ch] || ch) : (AMB_L[ch] || "")).split("").filter(x => /[ABD-HJLNP-UW-Z]/.test(x)));
     if (!ds.length || lopts.some(x => !x.length)) return [];
     const lss = lopts[0].flatMap(a => lopts[1].map(b => a + b));
     let combos = [""];
@@ -571,6 +657,24 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   }
   fetch("ukpc.json").then(r => r.ok ? r.json() : null).then(d => { PCDB = d; render(); }).catch(() => {});
   const CFG = window.FDR_CONFIG || {};
+  // exact positions of full postcodes, looked up once from postcodes.io and kept on the phone
+  let PCLL = {}; try { PCLL = JSON.parse(localStorage.getItem(LS + ".pcll") || "{}") || {}; } catch {}
+  let llBusy = false;
+  function pcLL(pc){ if (!pc) return null; const c = cleanPc(pc), x = PCLL[c]; return x ? { lat: x[0], lng: x[1] } : locate(c); }
+  function fetchLL(){
+    if (llBusy) return;
+    const want = [...new Set([...state.stops.map(pcOf), S().depot].filter(Boolean).map(cleanPc))].filter(c => /^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(c) && !(c in PCLL)).slice(0, 100);
+    if (!want.length) return;
+    llBusy = true;
+    fetch("https://api.postcodes.io/postcodes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postcodes: want }) })
+      .then(r => r.ok ? r.json() : null).then(j => {
+        let got = 0;
+        (j && j.result || []).forEach(x => { if (x && x.result && x.result.latitude != null){ PCLL[cleanPc(x.query)] = [x.result.latitude, x.result.longitude]; got++; } });
+        want.forEach(c => { if (!PCLL[c]) PCLL[c] = null; });
+        try { localStorage.setItem(LS + ".pcll", JSON.stringify(PCLL)); } catch {}
+        llBusy = false; if (got) render();
+      }).catch(() => { llBusy = false; });
+  }
   const defSet = { email: CFG.email || "", depot: CFG.depot ? normPc(CFG.depot) : "", stopMins: Number(CFG.stopMins) >= 0 && CFG.stopMins !== "" && CFG.stopMins != null ? Number(CFG.stopMins) : 10, factor:1.3, back:true, odoA:"", odoB:"" };
   const S = () => (state.settings = { ...defSet, ...(state.settings||{}) });
   function locate(pc){
@@ -689,7 +793,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 
   function renderTotals(){
     const all = sorted(), box = $("totals");
-    box.hidden = !all.length && $("setBox").hidden; if (!all.length){ $("finishLink").hidden = true; return; }
+    box.hidden = !all.length; if (!all.length){ $("finishLink").hidden = true; return; }
     const set = S(), p = plan();
     const ready = !!PCDB || p.source === "google";
     $("tMilesLbl").textContent = p.source === "google" ? "road miles" : "miles (est.)";
@@ -725,8 +829,34 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 
   if (GKEY) { const h = document.getElementById("setHint"); if (h) h.textContent = "Road miles and drive times come from Google (without live traffic). Road factor only applies if Google can't be reached. Enter the van's odometer for the real mileage."; }
   function fillSettings(){ const set = S(); $("sDepot").value = set.depot; $("sStop").value = set.stopMins; $("sFactor").value = set.factor; $("sReturn").checked = !!set.back; $("sOdoA").value = set.odoA; $("sOdoB").value = set.odoB; $("sDriver").value = set.driver || ""; $("sVan").value = set.van || ""; }
-  $("setBtn").onclick = () => { const b = $("setBox"); b.hidden = !b.hidden; if (!b.hidden) fillSettings(); };
-  $("setDone").onclick = () => { $("setBox").hidden = true; };
+  $("setBtn").onclick = () => setTab("set");
+  $("setDone").onclick = () => setTab("run");
+  $("sVanCheck").onchange = e => { try { localStorage.setItem(LS + ".vancheck", e.target.checked ? "on" : "off"); } catch {} render(); status(e.target.checked ? "Van check turned on." : "Van check turned off."); setTimeout(() => status(""), 3000); };
+  // ---- pages: Run, Shift, Week, Settings ----
+  let tab = "run";
+  document.body.classList.add("pg-run");
+  const TITLES = { run: "Today's run", shift: "My shift", week: "Week report", set: "Settings" };
+  function setTab(t){
+    tab = t;
+    document.body.classList.remove("pg-run", "pg-shift", "pg-week", "pg-set");
+    document.body.classList.add("pg-" + t);
+    document.querySelectorAll("#tabs [data-tab]").forEach(b => b.dataset.tab === t ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+    $("pageTitle").textContent = TITLES[t];
+    $("weekSheet").hidden = t !== "week"; $("hoursSheet").hidden = t !== "shift";
+    if (t === "week") openWeek();
+    if (t === "shift"){ openHours(); renderShift(); }
+    if (t === "set"){ fillSettings(); $("sVanCheck").checked = vanOn(); }
+    if (t === "run") render();
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll("#tabs [data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+  $("tSum").onclick = () => { const o = $("totals").classList.toggle("open"); $("tSum").setAttribute("aria-expanded", o); };
+  // delivered drops fold to one line; tap one to see its details again
+  const openDone = new Set();
+  document.addEventListener("click", e => {
+    const li = e.target.closest(".stop.done[data-sid]"); if (!li || e.target.closest(".acts, a, button, .confirm")) return;
+    const id = li.dataset.sid; if (openDone.has(id)) openDone.delete(id); else openDone.add(id); li.classList.toggle("open", openDone.has(id));
+  });
   let setTimer = null;
   function readSettings(){
     const set = S();
@@ -928,6 +1058,9 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 
   // ---- shift card ----
   let shiftAsk = "", shiftEdit = false;
+  // the van check is optional: off unless the driver turns it on in Settings
+  const vanOn = () => { try { return localStorage.getItem(LS + ".vancheck") === "on"; } catch { return false; } };
+  const ckWeek = W => vanOn() || W.list.some(({ r }) => r && r.check && !r.check.skipped);
   function checkChip(ck, noTime){
     if (!ck || ck.skipped) return '<span class="chip ex">Van check not done</span>';
     const n = Object.values(ck.items || {}).filter(v => v === "defect").length;
@@ -963,17 +1096,19 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
   }
   function renderShift(){
     const box = $("shiftBox"), today = todayKey(), sh = state.shift, cur = state.date === today;
-    const links = '<span style="display:flex;gap:14px"><button class="linkbtn" data-act="hours-open">My hours</button><button class="linkbtn" data-act="week-open">Week report</button></span>';
+    // the time balance is always on show at the top of the card; tap it to open My hours
+    const balTag = '<button type="button" class="baltag" data-act="hours-open" aria-label="Time balance, open My hours">'+(hasOfficial() ? '<span>Balance</span><b>'+sgnHtml(balance())+'</b>' : '<span>Balance</span><b class="hint">set hours</b>')+'</button>';
+    const links = '<span style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+balTag+'<span style="display:flex;gap:14px"><button class="linkbtn" data-act="hours-open">My hours</button><button class="linkbtn" data-act="week-open">Week report</button></span></span>';
     let h = "";
     if (!cur && sh && sh.in && !sh.out){
-      h = '<div class="eyebrow" style="color:var(--warn)">Not clocked out</div><h2>You didn\'t clock out on '+esc(fmtDay(state.date))+'</h2>'
+      h = '<div class="srow"><div class="eyebrow" style="color:var(--warn)">Not clocked out</div>'+balTag+'</div><h2>You didn\'t clock out on '+esc(fmtDay(state.date))+'</h2>'
         + '<div class="setrow" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="field"><label class="label" for="soOut">Clock-out time that day</label><input id="soOut" type="time" class="num" value="'+(state.finishedAt ? hm(state.finishedAt) : '')+'"></div>'
         + '<div class="field" style="justify-content:flex-end"><button class="btn" data-act="shift-fixout">Save</button></div></div><div id="soErr" class="err" hidden></div>'
         + '<div class="acts"><button class="btn primary grow" data-act="clock-in">Clock in for today</button></div>';
     } else if (!cur || !sh || !sh.in){
       const off = officialOf(today);
       h = '<div class="srow"><div><div class="eyebrow">Shift</div><h2>Not clocked in</h2></div>'+links+'</div>'
-        + (hasOfficial() ? '<div class="srow" style="justify-content:flex-start"><span class="hint">'+(off ? 'Official '+hm(off.s)+' – '+hm(off.e) : 'No official hours today')+'</span><span class="hint">Balance '+sgnHtml(balance())+'</span></div>' : '')
+        + (hasOfficial() ? '<div class="srow" style="justify-content:flex-start"><span class="hint">'+(off ? 'Official '+hm(off.s)+' – '+hm(off.e) : 'No official hours today')+'</span></div>' : '')
         + '<div class="acts"><button class="btn primary grow" data-act="clock-in">Clock in</button></div>';
     } else if (!sh.out){
       const br = onBreak(sh);
@@ -981,7 +1116,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       h = '<div class="srow"><div><div class="eyebrow"'+(br && bl <= 0 ? ' style="color:var(--danger)"' : '')+'>'+(br ? (bl > 0 ? 'On break · '+bl+' min left (until '+hm(be)+')' : 'Break over at '+hm(be)+(bl < 0 ? ' · '+(-bl)+' min ago' : '')) : 'On shift since '+hm(sh.in))+'</div>'
         + '<div class="big num">'+fmtH(paidWorked(sh, true))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'+links+'</div>'
         + officialLine(sh)
-        + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
+        + (vanOn() || (state.check && !state.check.skipped) ? '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>' : '')
         + (shiftAsk === "out"
           ? '<div class="skipbox"><div class="hint">Clocking out at '+hm(Date.now())+'</div>'
             + ((state.stops||[]).some(s => !s.done) ? '<div class="hint" style="color:var(--warn)">Some drops aren\'t marked delivered yet.</div>' : '')
@@ -993,7 +1128,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       h = '<div class="srow"><div><div class="eyebrow">Shift '+hm(sh.in)+' – '+hm(sh.out)+'</div>'
         + '<div class="big num">'+fmtH(paidWorked(sh))+'<span> worked'+(breakMins(sh) >= 1 ? ' · '+fmtH(breakMins(sh))+' break' : '')+'</span></div></div>'+links+'</div>'
         + officialLine(sh)
-        + '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>'
+        + (vanOn() || (state.check && !state.check.skipped) ? '<div class="srow" style="justify-content:flex-start">'+checkChip(state.check)+'<button class="linkbtn" data-act="check-open">'+(state.check && !state.check.skipped ? 'View check' : 'Do van check')+'</button></div>' : '')
         + (shiftAsk === "del" ? delBox(state.date) : shiftEdit ? shiftEditBox(sh) : '<div class="acts"><button class="btn grow" data-act="shift-edit">Change times</button><button class="btn grow" data-act="shift-reopen">Back on shift</button></div>');
     }
     box.innerHTML = h; box.hidden = false;
@@ -1102,12 +1237,12 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     $("wkNext").disabled = wkOff >= 0;
     $("wkTotals").innerHTML = '<div class="stat"><b>'+t.drops+'/'+t.total+'</b><span>drops delivered</span></div>'
       + '<div class="stat"><b>'+(t.total ? fmtMi(t.miles) + (t.milesKnown ? '' : '+') : '0')+'</b><span>miles'+(t.odo ? ' · van '+Math.round(t.odo) : '')+'</span></div>'
-      + '<div class="stat"><b>'+t.checks+'/'+t.worked+'</b><span>van checks'+(t.defects ? ' · '+t.defects+' defect'+(t.defects>1?'s':'') : '')+'</span></div>';
+      + (ckWeek(W) ? '<div class="stat"><b>'+t.checks+'/'+t.worked+'</b><span>van checks'+(t.defects ? ' · '+t.defects+' defect'+(t.defects>1?'s':'') : '')+'</span></div>' : '<div class="stat"><b>'+t.worked+'</b><span>days out</span></div>');
     $("wkDays").innerHTML = W.list.map(({ k, r }) => {
       const s = (r && r.summary) || {}, isToday = k === today, vm = vanMiles(r);
       return '<li class="wkday"><div class="wkhead"><b>'+esc(fmtDay(k))+(isToday ? ' · today' : '')+'</b>'+(dayHas(r) ? '' : '<span class="hint">'+(k > today ? '' : 'No run')+'</span>')+'</div>'
         + (s.total ? '<div class="wkbits">'+s.delivered+'/'+s.total+' drops' + (s.failed ? ' · '+s.failed+' can\'t deliver' : '') + (s.miles != null ? ' · '+fmtMi(s.miles)+' mi' : '') + (vm != null ? ' · van '+vm+' mi' : '')+'</div>' : '')
-        + (dayHas(r) ? '<div class="srow" style="justify-content:flex-start">'+checkChip(r.check, true)+'</div>' : '') + '</li>';
+        + (dayHas(r) && ckWeek(W) ? '<div class="srow" style="justify-content:flex-start">'+checkChip(r.check, true)+'</div>' : '') + '</li>';
     }).join("");
     $("wkWarn").textContent = "";
   }
@@ -1233,8 +1368,8 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       ["Drops delivered", t.drops + " of " + t.total, t.failed ? t.failed + " can't deliver" : "all notes accounted for"],
       ["Miles", t.total ? fmtMi(t.miles) + (t.milesKnown ? "" : "+") : "0", t.odo ? "Van odometer: " + Math.round(t.odo) + " mi" : "estimated from postcodes"],
       ["Van checks", t.checks + " of " + t.worked, t.defects ? t.defects + " defect" + (t.defects > 1 ? "s" : "") + " reported" : "no defects"],
-    ];
-    const bw = (PW - 2*M - 12) / 4;
+    ].filter(b => b[0] !== "Van checks" || ckWeek(W));
+    const bw = (PW - 2*M - 4 * (boxes.length - 1)) / boxes.length;
     boxes.forEach(([l, v, sub], i) => { const x = M + i * (bw + 4);
       doc.setDrawColor(...rule); doc.setFillColor(246,248,251); doc.roundedRect(x, y, bw, 24, 2, 2, "FD");
       doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...mute); doc.text(l.toUpperCase(), x + 3, y + 5.5, { charSpace: 0.3 });
@@ -1265,11 +1400,12 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       return [fmtDay(k), s.total ? s.delivered + "/" + s.total : "-", s.total ? String(s.failed || 0) : "-", s.total && s.miles != null ? fmtMi(s.miles) : "-", vm != null ? vm : "-",
         !dayHas(r) ? "-" : !ckr || ckr.skipped ? "Not done" : nDef ? nDef + " defect" + (nDef > 1 ? "s" : "") + (ckr.safe === false ? ", not safe" : "") : "OK"]; });
     tsRows.push(["Total", t.drops + "/" + t.total, String(t.failed), t.total ? fmtMi(t.miles) : "-", t.odo ? Math.round(t.odo) : "-", t.checks + " done"]);
-    table([["Day",30],["Drops",24],["Can't deliver",28],["Miles",24],["Van miles",24],["Van check",52]], tsRows,
+    const ckOn = ckWeek(W); if (!ckOn) tsRows.forEach(r => r.pop());
+    table([["Day",30],["Drops",24],["Can't deliver",28],["Miles",24],["Van miles",24],["Van check",52]].slice(0, ckOn ? 6 : 5), tsRows,
       { totalRow: true, color: (i, txt) => i === 5 && /Not done|defect/.test(txt) ? (/not safe/.test(txt) ? red : warnC) : null });
     // van checks
-    title("Van walkaround checks");
-    W.list.forEach(({ k, r }) => { if (!dayHas(r)) return; const c = r.check;
+    if (ckOn) title("Van walkaround checks");
+    W.list.forEach(({ k, r }) => { if (!ckOn || !dayHas(r)) return; const c = r.check;
       need(12); doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...ink); doc.text(longDay(k), M, y + 4);
       doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
       if (!c || c.skipped){ doc.setTextColor(...warnC); doc.text("Van check not done.", M + 55, y + 4); y += 8; return; }
@@ -1316,6 +1452,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         s.total && s.miles != null ? (Math.round(s.miles * 10) / 10).toFixed(1) : "", s.total ? (s.src === "google" ? "Google" : "Estimate") : "", set.odoA || "", set.odoB || "", vanMiles(r) ?? "",
         !dayHas(r) ? "" : !c || c.skipped ? "Not done" : defs.length ? "Defects" : "OK", defs.join("; "), c && !c.skipped ? (c.safe === false ? "No" : "Yes") : ""]); });
     rows.push(["Total","","","",t.drops,t.total,t.failed,t.total ? (Math.round(t.miles*10)/10).toFixed(1) : "","","","",t.odo ? Math.round(t.odo) : "",t.checks + " done",t.defects || "",""]);
+    if (!ckWeek(W)) rows.forEach(r => r.splice(12, 3));
     return csvOut(rows, wkName(W) + " summary.csv");
   }
   function buildWeekDropsCsv(){
@@ -1334,7 +1471,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       const parts = [fmtDay(k).padEnd(11)];
       if (!dayHas(r)) parts.push("no run");
       if (s.total) parts.push(s.delivered + "/" + s.total + " drops" + (s.miles != null ? ", " + fmtMi(s.miles) + " mi" : ""));
-      if (dayHas(r)) parts.push(!c || c.skipped ? "van check not done" : Object.values(c.items || {}).includes("defect") ? "van check: defects" : "van check OK");
+      if (dayHas(r) && ckWeek(W)) parts.push(!c || c.skipped ? "van check not done" : Object.values(c.items || {}).includes("defect") ? "van check: defects" : "van check OK");
       lines.push(parts.join("  ")); });
     lines.push("", "Total: " + t.drops + " of " + t.total + " drops delivered" + (t.total ? ", " + fmtMi(t.miles) + " miles" : "") + (t.odo ? " (van " + Math.round(t.odo) + " mi)" : "") + ".");
     if (t.defects) lines.push("Van defects reported: " + t.defects + " (details in the PDF).");
@@ -1364,7 +1501,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     const a = t.dataset.act, k = t.dataset.k;
     const after = () => { e.stopImmediatePropagation(); };
     switch (a){
-      case "clock-in": rollDay(); if (!state.shift || !state.shift.in || state.shift.out) state.shift = { in: Date.now(), breaks: [] }; shiftAsk = ""; shiftEdit = false; persist(); render(); openCheck(); return after();
+      case "clock-in": rollDay(); if (!state.shift || !state.shift.in || state.shift.out) state.shift = { in: Date.now(), breaks: [] }; shiftAsk = ""; shiftEdit = false; persist(); if (vanOn()) openCheck(); setTab("run"); status("Clocked in at " + hm(state.shift.in) + "."); setTimeout(() => status(""), 4000); return after();
       case "break": { const sh = state.shift; if (!sh) return after(); sh.breaks = sh.breaks || [];
         if (onBreak(sh)){ sh.breaks[sh.breaks.length - 1].e = Date.now(); clearTimeout(brkTimer); }
         else {
@@ -1401,12 +1538,12 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "ck-safe": ck.safe = t.dataset.v === "yes"; renderCheck(); return after();
       case "ck-save": saveCheck(); return after();
       case "ck-skip": if (!state.check) state.check = { skipped: true, at: Date.now() }; $("checkSheet").hidden = true; persist(); render(); return after();
-      case "week-open": openWeek(); return after();
-      case "week-close": $("weekSheet").hidden = true; return after();
+      case "week-open": setTab("week"); return after();
+      case "week-close": setTab("run"); return after();
       case "wk-prev": wkOff--; renderWeek(); return after();
       case "wk-next": if (wkOff < 0) wkOff++; renderWeek(); return after();
-      case "hours-open": openHours(); return after();
-      case "hours-close": $("hoursSheet").hidden = true; render(); return after();
+      case "hours-open": if (tab !== "shift") setTab("shift"); $("hoursSheet").scrollIntoView({ block: "start", behavior: "smooth" }); return after();
+      case "hours-close": setTab("run"); return after();
       case "hr-prev": hrOff--; hrEdit = ""; renderHours(); return after();
       case "hr-next": if (hrOff < 0) hrOff++; hrEdit = ""; renderHours(); return after();
       case "hr-edit": hrEdit = k; renderHours(); return after();
@@ -1426,7 +1563,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "hr-off-copy": { const s = document.querySelector('[data-off-s="1"]').value, e = document.querySelector('[data-off-e="1"]').value; [2,3,4,5].forEach(d => { document.querySelector('[data-off-s="'+d+'"]').value = s; document.querySelector('[data-off-e="'+d+'"]').value = e; }); return after(); }
       case "hr-off-save": saveOfficial(); return after();
       case "hr-pdf": { const r = buildHoursPdf(); if (r){ if (IS_ART) saveBlobFile(r.blob, r.name, "Your hours saved to your downloads."); else deliverPdf(r.blob, r.name); } return after(); }
-      case "wk-mail": $("weekSheet").hidden = true; openMail(); return after();
+      case "wk-mail": openMail(); return after();
       case "wk-pdf": { const r = buildWeekPdf(); if (r){ if (IS_ART) saveBlobFile(r.blob, r.name, "Weekly PDF saved to your downloads."); else deliverPdf(r.blob, r.name); } return after(); }
       case "wk-csv": { const c = buildWeekCsv(); saveBlobFile(c.blob, c.name, "Summary spreadsheet saved."); return after(); }
       case "wk-drops": { const c = buildWeekDropsCsv(); saveBlobFile(c.blob, c.name, "Drops spreadsheet saved."); return after(); }
@@ -1487,14 +1624,18 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
     const r = routeUrl(), rb = $("routeBtn");
     const openCount = all.filter(s=>!s.done).length;
     rb.hidden = !r || openCount < 2;
-    if (r){ rb.href = r; rb.textContent = mapApp !== "google" ? (mapApp === "waze" ? "Waze" : "Apple Maps") + ": next drop only" : (openCount > 10 ? "Route next 10 drops" : "Full route in Maps"); }
+    if (r){ rb.href = r; rb.textContent = mapApp !== "google" ? ({ waze:"Waze", tomtom:"TomTom", apple:"Apple Maps" }[mapApp]) + ": next drop only" : (openCount > 10 ? "Route next 10 drops" : "Full route in Maps"); }
 
+    const rbtn = $("reorderBtn"); rbtn.hidden = openCount < 2 && !reorderMode; rbtn.textContent = reorderMode ? "Done" : "Reorder"; rbtn.classList.toggle("primary", reorderMode);
+    $("orderNote").hidden = !reorderMode && !customOrder();
+    $("orderNote").innerHTML = (reorderMode ? 'Use ▲ ▼ to put the drops in the order you\'ll do them. The drop numbers stay the same. ' : 'Drops are in your own order, not number order. ')
+      + (customOrder() ? '<button type="button" class="linkbtn" data-act="order-reset">Put back in number order</button>' : '');
     const legsNow = PCDB ? plan() : { legs:{} };
     $("list").innerHTML = all.map(s => {
       const isNext = nxt && s.id === nxt.id;
       const conf = pendingConfirm === s.id;
-      return '<li class="stop'+(s.done?' done':'')+(s.failed?' failed':'')+(isNext?' is-next':'')+'"><div class="row"><span class="badge num">'+s.drop+'</span><div class="info">'
-        + '<div class="name">'+esc(s.name||"Unnamed drop")+' '+(s.example?'<span class="chip ex">Example</span>':'')+(noteCount(s)>1?' <span class="chip many">⚠ '+noteCount(s)+' notes</span>':'')+(s.failed?' <span class="chip fail">Can\'t deliver'+(s.failReason?' · '+esc(s.failReason):'')+'</span>':s.done?' <span class="chip ok">Delivered '+esc(s.doneAt||"")+'</span>':s.skipped?' <span class="chip skipped">Skipped '+esc(s.skipTime||"")+(s.skipReason?' · '+esc(s.skipReason):'')+'</span>':'')+'</div>'
+      return '<li class="stop'+(s.done?' done':'')+(s.done && openDone.has(String(s.id))?' open':'')+(s.failed?' failed':'')+(isNext?' is-next':'')+'" data-sid="'+esc(s.id)+'"><div class="row"><span class="badge num">'+s.drop+'</span><div class="info">'
+        + '<div class="name">'+esc(s.name||"Unnamed drop")+' '+(s.example?'<span class="chip ex">Example</span>':'')+(noteCount(s)>1?' <span class="chip many">⚠ '+noteCount(s)+' notes</span>':'')+(s.moved && !s.done?' <span class="chip moved">Moved</span>':'')+(s.failed?' <span class="chip fail">Can\'t deliver'+(s.failReason?' · '+esc(s.failReason):'')+'</span>':s.done?' <span class="chip ok">Delivered '+esc(s.doneAt||"")+'</span>':s.skipped?' <span class="chip skipped">Skipped '+esc(s.skipTime||"")+(s.skipReason?' · '+esc(s.skipReason):'')+'</span>':'')+'</div>'
         + '<div class="addr">'+esc(s.address)+(s.postcode?' · <span class="pcs">'+esc(s.postcode)+'</span>':'')+'</div>'
         + (s.phone ? '<div class="addr num">'+esc(s.phone)+'</div>' : '')
         + (PCDB && !s.done && !locate(pcOf(s)) ? '<div class="retry">'+(pcOf(s) ? 'Postcode '+esc(normPc(pcOf(s)))+' not recognised · check it in Edit' : 'No postcode · add one in Edit')+'</div>' : '')
@@ -1502,9 +1643,11 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
         + (s.note ? '<span class="note">'+esc(s.note)+'</span>' : '')
         + (legsNow.legs[s.id] ? '<div class="leg">'+fmtMi(legsNow.legs[s.id].mi)+' mi · '+(legsNow.source === 'google' ? '' : 'about ')+fmtT(legsNow.legs[s.id].min)+' from '+(s.id === legsNow.firstId ? 'base' : 'previous drop')+'</div>' : '')
         + '</div></div>'
-        + (conf ? '<div class="confirm">Remove drop '+s.drop+'?<button class="btn small danger" data-act="del-yes" data-id="'+s.id+'">Remove</button><button class="btn small" data-act="del-no">Keep</button></div>'
+        + (reorderMode && !s.done ? '<div class="acts"><button class="btn small mv" data-act="mv-up" data-id="'+s.id+'" aria-label="Move drop '+s.drop+' up">▲ Up</button><button class="btn small mv" data-act="mv-down" data-id="'+s.id+'" aria-label="Move drop '+s.drop+' down">▼ Down</button></div>'
+          : conf ? '<div class="confirm">Remove drop '+s.drop+'?<button class="btn small danger" data-act="del-yes" data-id="'+s.id+'">Remove</button><button class="btn small" data-act="del-no">Keep</button></div>'
           : '<div class="acts"><a class="btn small" target="_blank" rel="noopener" href="'+esc(dirUrl(s))+'">Directions</a>'
             + '<button class="btn small" data-act="'+(s.done?'undo':'done')+'" data-id="'+s.id+'">'+(s.failed?'Undo':s.done?'Not delivered':'Delivered')+'</button>'
+            + (!s.done && !isNext ? '<button class="btn small donext" data-act="do-next" data-id="'+s.id+'">Do next</button>' : '')
             + '<button class="btn small" data-act="edit" data-id="'+s.id+'">Edit</button>'
             + '<button class="btn small" data-act="del" data-id="'+s.id+'" aria-label="Remove drop '+s.drop+'">Remove</button></div>')
         + '</li>';
@@ -1517,9 +1660,13 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       + '</div></li>' : '');
 
     renderTotals(); renderWho(); renderShift();
+    if (all.length) $("tSum").innerHTML = '<span><b>'+$("tMiles").textContent+'</b> mi · <b>'+$("tDay").textContent+'</b> with drops'+($("tLeft").textContent ? ' · <b>'+(($("tLeft").textContent.match(/Back about (\S+)/) || [])[1] || "")+'</b> back' : '')+'</span><span class="chev">›</span>';
+    const hb = $("hdrBal"); hb.hidden = !hasOfficial(); if (!hb.hidden) hb.innerHTML = '<span>Balance</span><b>'+sgnHtml(balance())+'</b>';
     $("mapG").setAttribute("aria-pressed", mapApp==="google");
     $("mapA").setAttribute("aria-pressed", mapApp==="apple");
     $("mapW").setAttribute("aria-pressed", mapApp==="waze");
+    $("mapT").setAttribute("aria-pressed", mapApp==="tomtom");
+    if (mapApp === "tomtom") fetchLL();
   }
 
 
@@ -1539,7 +1686,7 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       + (set.van ? '<span class="plate">'+esc(set.van)+'</span>' : '<span class="add">+ Van reg</span>')
       + '<span class="edit">Change</span>';
   }
-  $("who").onclick = () => { $("totals").hidden = false; const b = $("setBox"); b.hidden = false; fillSettings(); $("totals").scrollIntoView({ block:"start", behavior:"smooth" }); setTimeout(() => $(S().driver ? "sVan" : "sDriver").focus(), 350); };
+  $("who").onclick = () => { setTab("set"); setTimeout(() => $(S().driver ? "sVan" : "sDriver").focus(), 350); };
   // ---------- PDF report ----------
   function makeReport(){ const r = buildPdf(); if (r) deliverPdf(r.blob, r.name); }
   function buildPdf(){
@@ -1757,6 +1904,10 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
       case "copy-subj": copyText(mailSubject(), "Subject"); return;
       case "copy-body": copyText(mailBody(), "Message"); return;
       case "del": pendingConfirm = id; break;
+      case "reorder": reorderMode = !reorderMode; break;
+      case "order-reset": state.stops.forEach(x => { delete x.pos; delete x.moved; }); reorderMode = false; persist(); status("Back in drop number order."); setTimeout(() => status(""), 3000); break;
+      case "do-next": if (s){ const o = routeOrder().filter(x => x !== s), at = o.findIndex(x => !x.done); o.splice(at < 0 ? o.length : at, 0, s); unskip(s); s.moved = true; setOrder(o); persist(); status("Drop " + s.drop + " is now your next drop."); setTimeout(() => status(""), 3000); window.scrollTo({ top: 0, behavior: "smooth" }); } break;
+      case "mv-up": case "mv-down": if (s){ const o = routeOrder(), i = o.indexOf(s), d = t.dataset.act === "mv-up" ? -1 : 1; let j = i + d; while (o[j] && o[j].done) j += d; if (o[j]){ o[i] = o[j]; o[j] = s; unskip(s); s.moved = true; setOrder(o); persist(); } } break;
       case "del-no": pendingConfirm = null; break;
       case "del-yes": state.stops = state.stops.filter(x => x.id !== id); pendingConfirm = null; persist(); break;
       case "newday": archive(); state = { date: todayKey(), stops: [], settings: { ...S(), odoA:"", odoB:"" } }; persist(); break;
@@ -1772,6 +1923,9 @@ details.more summary{cursor:pointer;color:var(--neon);font-size:14px}
 
   $("mapG").onclick = () => { mapApp = "google"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
   $("mapA").onclick = () => { mapApp = "apple"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
+  $("mapT").onclick = () => { mapApp = "tomtom"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
+  // links to another app (tomtomgo://) open in place, not in a new tab
+  document.addEventListener("click", e => { const a = e.target.closest('a[href^="tomtomgo:"]'); if (a){ e.preventDefault(); location.href = a.href; } });
   $("mapW").onclick = () => { mapApp = "waze"; try{localStorage.setItem(LS+".maps",mapApp)}catch{} render(); };
 
   $("exampleBtn").onclick = () => {
@@ -2073,7 +2227,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
   }
   const townArea = lines => { const t = townInfo(lines); return t ? t.area : ""; };
   // OCR look-alikes for postcode characters: ] } and ) for J, $ for S, | and ! for I.
-  const pcChars = l => l.toUpperCase().replace(/[\]\}\)]J|J[\]\}\)]/g, "J").replace(/([A-Z0-9])[\)\]\}]([A-Z0-9])/g, "$1J$2").replace(/[\]\}]/g, "J").replace(/\$/g, "S").replace(/[|!]/g, "I");
+  const pcChars = l => l.toUpperCase().replace(/[\]\}\)]J|J[\]\}\)]/g, "J").replace(/([A-Z0-9])[\)\]\}]([A-Z0-9])/g, "$1J$2").replace(/[\]\}]/g, "J").replace(/[$§]/g, "S").replace(/([A-Z0-9])\/(?=[A-Z0-9])/g, (m, a) => a + "7").replace(/[|!]/g, "I");
   // Find a postcode in one line even when the camera misread a character or two. Returns { pc, at, len, score } or null.
   // one letter added, dropped or changed (WE -> WF, WEF -> WF)
   function near1(a, b){
@@ -2116,6 +2270,8 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
         if (!/^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$/.test(c)) continue;
         const [o, i] = c.split(" "), area = o.match(/^[A-Z]+/)[0];
         if (!INWARD_OK.test(i)) continue;
+        // a look-alike swap in the last two letters (1JI -> 1JL) only counts when it fits the town on the note
+        if (/[ICVKMO]/.test(raw.slice(-2)) && H && H.dists && !H.dists.includes(o)) continue;
         const known = PCDB ? (PCDB.s[o + " " + i[0]] ? 3 : PCDB.o[o] ? 1.5 : 0) : 1.5;
         if (!known && c !== ex) continue;
         const sc = known + (c === ex ? (known === 3 ? 6 : 2) : 0) + (H && area === H.area ? 3 : 0) + (H && H.dists && H.dists.includes(o) ? 4 : 0) + n * 0.1;
@@ -2128,7 +2284,7 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     });
     return best && best.score >= 3 ? best : null;
   }
-  const COUNTRY_RE = /^(united\s*kingdom|u\.?k\.?|england|great\s*britain|gb)\.?$/i;
+  const COUNTRY_RE = /^(\S{0,2}n[il1|]ted\s*k\S{0,3}gd\S{1,3}|un\S{0,4}\s*kingdom|united\s*k\S{3,6}|u\.?k\.?|england|great\s*britain|gb)\.?$/i;
   const ORG_RE = /\b(school|academy|college|primary|infant|junior|nursery|university|centre|center|hospital|surgery|church|council|library|ltd|limited|plc|trust|group|services|pharmacy|practice|club|hotel)\b/i;
   const STREET_RE = /^\d|\b(road|rd|street|st|lane|ln|avenue|ave|drive|dr|close|way|place|court|crescent|grove|terrace|hill|gardens|walk|row|square|parade|green|mews|view|rise)\b\.?$/i;
   // Tidy one OCR'd line: drop symbol-only bits (=, (, —) and stray punctuation on the ends of words.
@@ -2228,6 +2384,10 @@ Set "readable" to false if this is not a delivery note or the address cannot be 
     if (clean.length > 2 && !STREET_RE.test(clean[1]) && (ORG_RE.test(clean[1]) || /\b(of|and|&|the|community)$/i.test(clean[0])) && !/^\d/.test(clean[1])){
       clean.splice(0, 2, clean[0] + " " + clean[1]);
     }
+    // a building name that ran onto a second line ("... Business & Innovation" / "Centre") is joined back up
+    for (let a = clean.length - 1; a >= 2; a--)
+      if (/^(centre|center|house|park|building|buildings|estate|court|hall|campus|complex|exchange|works|mill|mills|plaza|quarter|point|chambers)$/i.test(clean[a]) && clean[a - 1].split(" ").length >= 2 && !/^\d/.test(clean[a - 1]) && !STREET_RE.test(clean[a - 1]))
+        clean.splice(a - 1, 2, clean[a - 1] + " " + clean[a]);
     const phoneM = text.match(/(?:\+44\s?|0)\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}/);
     return { name: clean[0] || "", address: clean.slice(1).join(", "), postcode: pick ? pick.pc : "", phone: phoneM ? phoneM[0] : "", note,
              postcodes: [...new Set(pcs.map(p => p.pc))], lines };
@@ -2389,7 +2549,7 @@ ${t.slice(0, 6000)}`;
 
   // ---------- boot ----------
   const cached = lsRead(); if (cached) state = cached;
-  render(); applyScanMode();
+  setTab(state.date === todayKey() && state.shift && state.shift.in ? "run" : "shift"); applyScanMode();
 
   if (!canScan()) status("Photo reading isn't available on this phone. Use Add drop to type addresses.");
   else if (!ocrWorker) status("");
